@@ -9,20 +9,25 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
-import com.example.lasercraft.camera.presentation.CameraPreviewScreen
+import androidx.hilt.navigation.compose.hiltViewModel
+import com.example.lasercraft.images.presentation.camera.CameraPreviewScreen
+import com.example.lasercraft.images.presentation.picker.presentation.SingleImagePicker
+import com.example.lasercraft.mqtt.MqttClient
 import com.example.lasercraft.ui.theme.LaserCraftTheme
+import dagger.hilt.android.AndroidEntryPoint
+import javax.inject.Inject
 
 enum class ScreenState {
     PENDING_CAMERA_PERMISSION,
@@ -30,8 +35,12 @@ enum class ScreenState {
     IDLE
 }
 
+@AndroidEntryPoint
 class MainActivity : ComponentActivity() {
+    @Inject
+    lateinit var mqttClient: MqttClient
     private val state = mutableStateOf(ScreenState.PENDING_CAMERA_PERMISSION)
+
 
     private val cameraPermissionRequest =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
@@ -44,6 +53,10 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        mqttClient.connect(onSuccess = {
+            mqttClient.subscribe("test")
+        })
 
         when (PackageManager.PERMISSION_GRANTED) {
             ContextCompat.checkSelfPermission(
@@ -62,6 +75,8 @@ class MainActivity : ComponentActivity() {
             LaserCraftTheme {
                 when(state.value) {
                     ScreenState.IDLE, ScreenState.PENDING_CAMERA_PERMISSION -> {
+                        val viewModel: AppViewModel = hiltViewModel()
+
                         Column(
                             modifier = Modifier
                                 .fillMaxSize()
@@ -69,6 +84,10 @@ class MainActivity : ComponentActivity() {
                             horizontalAlignment = Alignment.CenterHorizontally,
                             verticalArrangement = Arrangement.Center
                         ) {
+                            SingleImagePicker()
+
+                            Spacer(modifier = Modifier.height(50.dp))
+
                             Button(
                                 modifier = Modifier
                                     .height(80.dp)
@@ -84,7 +103,6 @@ class MainActivity : ComponentActivity() {
                         CameraPreviewScreen(onCaptureClick = {  state.value = ScreenState.IDLE })
                     }
                 }
-
             }
         }
     }

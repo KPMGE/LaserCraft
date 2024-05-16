@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
@@ -5,9 +7,20 @@ plugins {
     kotlin("kapt")
 }
 
+val envProperties = Properties()
+val localPropertiesFile = project.rootProject.file("environment.properties")
+if (localPropertiesFile.exists()) {
+    envProperties.load(localPropertiesFile.inputStream())
+}
+
 android {
     namespace = "com.example.lasercraft"
     compileSdk = 34
+
+    buildFeatures {
+        compose = true
+        buildConfig = true
+    }
 
     defaultConfig {
         applicationId = "com.example.lasercraft"
@@ -20,6 +33,10 @@ android {
         vectorDrawables {
             useSupportLibrary = true
         }
+
+        // set BuildConfig variables
+        buildConfigField("String", "MQTT_BROKER_URL", "\"${envProperties.getProperty("mqtt_broker_url")}\"")
+        buildConfigField("String", "MQTT_CLIENT_ID_PREFIX", "\"${envProperties.getProperty("mqtt_client_id_prefix")}\"")
     }
 
     buildTypes {
@@ -32,11 +49,11 @@ android {
         }
     }
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_11
-        targetCompatibility = JavaVersion.VERSION_11
+        sourceCompatibility = JavaVersion.VERSION_1_8
+        targetCompatibility = JavaVersion.VERSION_1_8
     }
     kotlinOptions {
-        jvmTarget = "11"
+        jvmTarget = "1.8"
     }
     buildFeatures {
         compose = true
@@ -70,6 +87,16 @@ dependencies {
     // Retrofit
     implementation("com.squareup.retrofit2:retrofit:2.9.0")
     implementation("com.squareup.retrofit2:converter-gson:2.9.0")
+
+    // Hivemq mqtt
+//    implementation("com.hivemq:hivemq-mqtt-client:1.3.0")
+
+    // Paho Mqtt
+    implementation("io.github.mayzs:paho.mqtt.android:1.1.7")
+//    implementation("org.eclipse.paho:org.eclipse.paho.client.mqttv3:1.2.5")
+//    implementation("org.eclipse.paho:org.eclipse.paho.android.service:1.1.1")
+    implementation("androidx.legacy:legacy-support-v4:1.0.0")
+
 
     implementation("androidx.core:core-ktx:1.13.1")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.7.0")
