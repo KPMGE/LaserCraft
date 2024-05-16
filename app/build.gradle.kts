@@ -8,7 +8,7 @@ plugins {
 }
 
 val envProperties = Properties()
-val localPropertiesFile = project.rootProject.file("environment.properties")
+val localPropertiesFile = project.rootProject.file("local.properties")
 if (localPropertiesFile.exists()) {
     envProperties.load(localPropertiesFile.inputStream())
 }
