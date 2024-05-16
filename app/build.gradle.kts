@@ -35,6 +35,7 @@ android {
         }
 
         // set BuildConfig variables
+        buildConfigField("String", "API_BASE_URL", "\"${envProperties.getProperty("api_base_url")}\"")
         buildConfigField("String", "MQTT_BROKER_URL", "\"${envProperties.getProperty("mqtt_broker_url")}\"")
         buildConfigField("String", "MQTT_CLIENT_ID_PREFIX", "\"${envProperties.getProperty("mqtt_client_id_prefix")}\"")
     }

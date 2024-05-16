@@ -2,6 +2,7 @@ package com.example.lasercraft.di
 
 import android.content.Context
 import com.example.lasercraft.ApiService
+import com.example.lasercraft.BuildConfig
 import com.example.lasercraft.mqtt.MqttClient
 import dagger.Module
 import dagger.Provides
@@ -12,8 +13,6 @@ import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import javax.inject.Singleton
 
-private const val BASE_URL = "https://1509-2804-56c-a52f-e100-2588-288c-d86b-af5a.ngrok-free.app"
-
 @Module
 @InstallIn(SingletonComponent::class)
 object LaserCraftModule {
@@ -22,7 +21,7 @@ object LaserCraftModule {
     fun provideRetrofit(): Retrofit {
         return Retrofit.Builder()
             .addConverterFactory(GsonConverterFactory.create())
-            .baseUrl(BASE_URL)
+            .baseUrl(BuildConfig.API_BASE_URL)
             .build()
     }
 

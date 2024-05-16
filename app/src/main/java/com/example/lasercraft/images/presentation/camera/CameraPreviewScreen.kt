@@ -1,4 +1,4 @@
-package com.example.lasercraft.camera.presentation
+package com.example.lasercraft.images.presentation.camera
 
 import android.content.ContentValues
 import android.content.Context

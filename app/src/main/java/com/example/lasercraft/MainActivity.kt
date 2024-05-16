@@ -21,7 +21,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
-import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.lasercraft.images.presentation.camera.CameraPreviewScreen
 import com.example.lasercraft.images.presentation.picker.presentation.SingleImagePicker
 import com.example.lasercraft.mqtt.MqttClient
@@ -75,8 +74,6 @@ class MainActivity : ComponentActivity() {
             LaserCraftTheme {
                 when(state.value) {
                     ScreenState.IDLE, ScreenState.PENDING_CAMERA_PERMISSION -> {
-                        val viewModel: AppViewModel = hiltViewModel()
-
                         Column(
                             modifier = Modifier
                                 .fillMaxSize()
