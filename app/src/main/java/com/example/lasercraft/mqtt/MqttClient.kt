@@ -24,20 +24,6 @@ class MqttClient @Inject constructor(
     fun connect(onSuccess: () -> Unit) {
         Log.d(TAG, "Begin connection")
 
-        mqttClient.setCallback(object : MqttCallback {
-            override fun messageArrived(topic: String?, message: MqttMessage?) {
-                Log.d(TAG, "Receive message: ${message.toString()} from topic: $topic")
-            }
-
-            override fun connectionLost(cause: Throwable?) {
-                Log.d(TAG, "Connection lost ${cause.toString()}")
-            }
-
-            override fun deliveryComplete(token: IMqttDeliveryToken?) {
-
-            }
-        })
-
         val options = MqttConnectOptions()
 
         try {
@@ -59,7 +45,24 @@ class MqttClient @Inject constructor(
 
     }
 
-    fun subscribe(topic: String, qos: Int = 1) {
+    fun subscribe(topic: String, qos: Int = 1, onMessage: (ByteArray) -> Unit = {}) {
+        mqttClient.setCallback(object : MqttCallback {
+            override fun messageArrived(topic: String?, message: MqttMessage?) {
+                Log.d(TAG, "Received message from topic: $topic")
+                message?.let {
+                    onMessage(it.payload)
+                }
+            }
+
+            override fun connectionLost(cause: Throwable?) {
+                Log.d(TAG, "Connection lost ${cause.toString()}")
+            }
+
+            override fun deliveryComplete(token: IMqttDeliveryToken?) {
+
+            }
+        })
+
         try {
             mqttClient.subscribe(topic, qos, null, object : IMqttActionListener {
                 override fun onSuccess(asyncActionToken: IMqttToken?) {
