@@ -89,15 +89,16 @@ dependencies {
     implementation("com.squareup.retrofit2:retrofit:2.9.0")
     implementation("com.squareup.retrofit2:converter-gson:2.9.0")
 
-    // Hivemq mqtt
-//    implementation("com.hivemq:hivemq-mqtt-client:1.3.0")
-
     // Paho Mqtt
     implementation("io.github.mayzs:paho.mqtt.android:1.1.7")
-//    implementation("org.eclipse.paho:org.eclipse.paho.client.mqttv3:1.2.5")
-//    implementation("org.eclipse.paho:org.eclipse.paho.android.service:1.1.1")
     implementation("androidx.legacy:legacy-support-v4:1.0.0")
 
+    // Jetpack compose navigation
+    val navVersion = "2.7.7"
+    implementation("androidx.navigation:navigation-compose:$navVersion")
+
+    // Mui icons
+    implementation("androidx.compose.material:material-icons-extended:1.6.7")
 
     implementation("androidx.core:core-ktx:1.13.1")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.7.0")
