@@ -32,20 +32,16 @@ import com.example.lasercraft.mqtt.MqttClient
 import com.example.lasercraft.ui.theme.LaserCraftTheme
 import dagger.hilt.android.AndroidEntryPoint
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.navigation.compose.rememberNavController
 import com.example.lasercraft.images.presentation.engraver.EngraverImagePreviewScreen
+import com.example.lasercraft.navigation.LaserCraftNavGraph
 import javax.inject.Inject
 
-enum class ScreenState {
-    PENDING_CAMERA_PERMISSION,
-    OPEN_CAMERA,
-    IDLE,
-}
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     @Inject
     lateinit var mqttClient: MqttClient
-    private val state = mutableStateOf(ScreenState.PENDING_CAMERA_PERMISSION)
 
     private val cameraPermissionRequest =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
@@ -65,7 +61,7 @@ class MainActivity : ComponentActivity() {
                 this,
                 Manifest.permission.CAMERA
             ) -> {
-                state.value = ScreenState.IDLE
+                // persmission granted
             }
 
             else -> {
@@ -74,41 +70,10 @@ class MainActivity : ComponentActivity() {
         }
 
         setContent {
+            val navController = rememberNavController()
+
             LaserCraftTheme {
-                when(state.value) {
-                    ScreenState.IDLE, ScreenState.PENDING_CAMERA_PERMISSION -> {
-                        if (true) {
-                            EngraverImagePreviewScreen()
-                        } else {
-
-                            Column(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .background(MaterialTheme.colorScheme.background),
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                                verticalArrangement = Arrangement.Center
-                            ) {
-                                SingleImagePicker()
-
-                                Spacer(modifier = Modifier.height(50.dp))
-
-                                Button(
-                                    modifier = Modifier
-                                        .height(80.dp)
-                                        .width(170.dp),
-                                    shape = MaterialTheme.shapes.large,
-                                    onClick = { state.value = ScreenState.OPEN_CAMERA },
-                                ) {
-                                    Text("Open camera")
-                                }
-                            }
-                        }
-
-                    }
-                    ScreenState.OPEN_CAMERA -> {
-                        CameraPreviewScreen(onCaptureClick = {  state.value = ScreenState.IDLE })
-                    }
-                }
+                LaserCraftNavGraph(navController = navController)
             }
         }
     }
