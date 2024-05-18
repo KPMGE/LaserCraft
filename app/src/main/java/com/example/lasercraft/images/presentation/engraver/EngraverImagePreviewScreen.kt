@@ -1,10 +1,12 @@
 package com.example.lasercraft.images.presentation.engraver
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -13,7 +15,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.ArrowBack
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material3.BottomAppBar
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -22,6 +24,7 @@ import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.Scaffold
@@ -32,18 +35,22 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.example.lasercraft.ui.theme.LaserCraftTheme
+import androidx.navigation.NavHostController
+import com.example.lasercraft.navigation.Screens
 
 @Composable
-fun EngraverImagePreviewScreen() {
+fun EngraverImagePreviewScreen(navController: NavHostController) {
     val viewModel: EngraverImagePreviewViewModel = hiltViewModel()
     val state = viewModel.uiState.collectAsState().value
 
+    BackHandler {
+        navController.navigate(Screens.Home.route)
+    }
+
     Scaffold(
-        topBar = { TopBar() },
+        topBar = { TopBar(onBackClick = { navController.navigate(Screens.Home.route) }) },
         bottomBar = {
             when (state) {
                 is EngraverImagePreviewState.LOADING -> null
@@ -69,6 +76,8 @@ fun EngraverImagePreviewScreen() {
                 is EngraverImagePreviewState.LOADING -> {
                     PreviewImageCard {
                         CircularProgressIndicator(modifier = Modifier.size(50.dp))
+                        Spacer(modifier = Modifier.height(20.dp))
+                        Text("processando imagem, aguarde...")
                     }
                 }
                 is EngraverImagePreviewState.ERROR -> {
@@ -90,17 +99,19 @@ fun EngraverImagePreviewScreen() {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun TopBar() {
+private fun TopBar(onBackClick: () -> Unit) {
     CenterAlignedTopAppBar(
         title = {
             Text(
-                style = MaterialTheme.typography.titleSmall,
+                style = MaterialTheme.typography.titleMedium,
                 text = "LaserCraft",
             )
         },
         navigationIcon = {
-            Icon(Icons.Rounded.ArrowBack, "back button")
-        }
+            IconButton(onClick = onBackClick) {
+                Icon(Icons.AutoMirrored.Rounded.ArrowBack, "back button")
+            }
+        },
     )
 }
 
@@ -151,16 +162,10 @@ private fun BottomBar(buttonText: String, buttonColor: Color) {
 @Composable
 private fun BitmapImage(bitmap: ImageBitmap) {
     Image(
-        modifier = Modifier.fillMaxSize().padding(all = 10.dp),
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(all = 10.dp),
         bitmap = bitmap,
         contentDescription = "laser engraver processed image",
     )
-}
-
-@Preview(showBackground = true)
-@Composable
-private fun EngraverImagePreviewScreenPreview() {
-    LaserCraftTheme {
-        EngraverImagePreviewScreen()
-    }
 }
