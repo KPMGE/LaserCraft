@@ -35,7 +35,7 @@ class MqttClient @Inject constructor(
 
                 override fun onFailure(asyncActionToken: IMqttToken?, exception: Throwable?) {
                     Log.d(TAG, "Connection failure")
-                    Log.d(TAG, exception?.printStackTrace().toString())
+                    Log.d(TAG, exception.toString())
                 }
             })
 
