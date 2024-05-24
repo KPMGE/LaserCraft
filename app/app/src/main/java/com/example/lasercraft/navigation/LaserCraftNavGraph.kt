@@ -31,7 +31,7 @@ fun LaserCraftNavGraph(navController: NavHostController) {
             HomeScreen(navController)
         }
         composable(route = Screens.Camera.route) {
-            CameraPreviewScreen(onCaptureClick = { navController.navigate(Screens.EngraverImagePreview.route) })
+            CameraPreviewScreen(navController)
         }
         composable(route = Screens.ImagePicker.route) {
             SingleImagePicker(navController)
