@@ -30,6 +30,7 @@ impl std::fmt::Display for ApiError {
 
 impl ResponseError for ApiError {
     fn status_code(&self) -> actix_web::http::StatusCode {
+        eprintln!("ERROR: {:?}", self);
         StatusCode::BAD_REQUEST
     }
 }

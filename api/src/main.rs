@@ -1,5 +1,5 @@
-mod mqtt_helper;
 mod api;
+mod mqtt_helper;
 
 use dotenv::dotenv;
 use std::env;
@@ -14,12 +14,16 @@ async fn main() -> anyhow::Result<()> {
 
     let host = env::var("API_HOST")?;
 
-    HttpServer::new(|| App::new()
-        .service(api::process_image)
-        .service(api::healthcheck))
-        .bind(host.clone())?
-        .run()
-        .await?;
+    println!("Running on: http://{host}");
+
+    HttpServer::new(|| {
+        App::new()
+            .service(api::process_image)
+            .service(api::healthcheck)
+    })
+    .bind(host.clone())?
+    .run()
+    .await?;
 
     Ok(())
 }
