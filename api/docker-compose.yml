@@ -6,7 +6,7 @@ services:
       - 3333:3333
     environment:
       - API_HOST=${API_HOST}
-      - MQTT_BROKER=tcp://hivemq:1883
+      - MQTT_BROKER=${MQTT_BROKER}
       - MQTT_TOPIC=${MQTT_TOPIC}
       - MQTT_CLIENT_PREFIX=${MQTT_CLIENT_PREFIX}
 
