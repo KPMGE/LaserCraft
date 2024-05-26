@@ -30,7 +30,7 @@ impl std::fmt::Display for ApiError {
 
 impl ResponseError for ApiError {
     fn status_code(&self) -> actix_web::http::StatusCode {
-        eprintln!("ERROR: {:?}", self);
+        log::error!("ERROR: {:?}", self);
         StatusCode::BAD_REQUEST
     }
 }
@@ -53,28 +53,32 @@ pub async fn process_image(mut payload: Multipart) -> Result<HttpResponse, ApiEr
     let gcode_path = "./test-api.gcode";
     let gcode_img_path = "./test-api-gcode.png";
 
-    let mut field = payload.try_next().await.unwrap().unwrap();
+    let mut field = payload
+        .try_next()
+        .await
+        .map_err(|e| anyhow!("Could not get image from multipart form: {e:?}"))?
+        .ok_or(anyhow!("No image present on form"))?;
     let content_disposition = field.content_disposition();
     let filename = content_disposition.get_filename().unwrap_or_default();
 
-    println!("Received file: {filename}");
+    log::info!("Received file: {filename}");
 
-    println!("Saving file: {filename} to disk");
+    log::info!("Saving file: {filename} to disk");
     save_file_to_disk(png_img_path, &mut field).await?;
 
-    println!("Converting image to svg...");
+    log::info!("Converting image to svg...");
     convert_img_to_svg(png_img_path, svg_img_path)?;
 
-    println!("Converting image to gcode...");
+    log::info!("Converting image to gcode...");
     convert_img_to_gcode(gcode_path, svg_img_path)?;
 
-    println!("Converting gcode to png image...");
+    log::info!("Converting gcode to png image...");
     convert_gcode_to_png(gcode_path, gcode_img_path)?;
 
-    println!("Publishing image: {} to mqtt topic", gcode_img_path);
+    log::info!("Publishing image: {} to mqtt topic", gcode_img_path);
     publish_img(gcode_img_path)?;
 
-    println!("Success!");
+    log::info!("Success!");
 
     Ok(HttpResponse::Ok().finish())
 }

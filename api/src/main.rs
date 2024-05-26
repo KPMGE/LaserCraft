@@ -10,11 +10,12 @@ extern crate paho_mqtt as mqtt;
 
 #[actix_web::main]
 async fn main() -> anyhow::Result<()> {
+    env_logger::init();
     dotenv().ok();
 
     let host = env::var("API_HOST")?;
 
-    println!("Running on: http://{host}");
+    log::info!("Running on: http://{host}");
 
     HttpServer::new(|| {
         App::new()

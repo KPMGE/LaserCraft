@@ -5,10 +5,11 @@ services:
     ports:
       - 3333:3333
     environment:
-      - API_HOST=${API_HOST}
-      - MQTT_BROKER=${MQTT_BROKER}
-      - MQTT_TOPIC=${MQTT_TOPIC}
-      - MQTT_CLIENT_PREFIX=${MQTT_CLIENT_PREFIX}
+      RUST_LOG: "error, info"
+      API_HOST: ${API_HOST}
+      MQTT_BROKER: ${MQTT_BROKER}
+      MQTT_TOPIC: ${MQTT_TOPIC}
+      MQTT_CLIENT_PREFIX: ${MQTT_CLIENT_PREFIX}
 
   hivemq:
     image: hivemq/hivemq4
