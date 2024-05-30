@@ -10,7 +10,7 @@ const char* mqtt_server = "";
 const int mqtt_port = ;
 const char* mqtt_username = "";
 const char* mqtt_password = "";
-const char *mqtt_topic = "laser_craft_gcode_img";
+const char *mqtt_topic = "laser_craft_gcode";
 
 WiFiClient espClient;
 PubSubClient client(espClient);
@@ -87,7 +87,7 @@ void reconnect() {
 void mqtt_callback(char* topic, byte* payload, unsigned int length) {
   Serial.print("Message received [");
   Serial.print(topic);
-  Serial.print("]: ");
+  Serial.println("]: ");
   for (int i = 0; i < length; i++) {
     Serial.print((char)payload[i]);
   }
