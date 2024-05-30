@@ -30,5 +30,6 @@ docker-compose up
 ```
 
 ## Api routes
-For now there are only 2 routes on this api, there's a `/healthcheck` one, for
-checking if the api is up and a `/img` route for processing an image.
+For now there are only 3 routes on this api, there's a `/healthcheck` one, for
+checking if the api is up and a `/img` route for processing an image. And
+finally, a `/engrave` one for sending the gcode to the engraving machine.
