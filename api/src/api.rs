@@ -1,6 +1,7 @@
 use std::env;
 use std::fs::File;
 use std::path::Path;
+use std::sync::Arc;
 
 use crate::mqtt_helper;
 
@@ -8,16 +9,15 @@ use actix_multipart::Field;
 use actix_multipart::Multipart;
 use actix_web::get;
 use actix_web::http::StatusCode;
+use actix_web::web;
 use actix_web::ResponseError;
 use actix_web::{post, HttpResponse, Responder};
 use anyhow::anyhow;
-use dotenv::dotenv;
 use futures::StreamExt;
 use futures::TryStreamExt;
 use mqtt_helper::MqttHelper;
 use std::io::Write;
 use std::process::Command;
-use uuid::Uuid;
 
 #[derive(Debug)]
 struct ApiError(anyhow::Error);
@@ -46,8 +46,30 @@ async fn healthcheck() -> impl Responder {
     HttpResponse::Ok().finish()
 }
 
+#[get("/engrave")]
+pub async fn engrave_img(
+    mqtt_helper: web::Data<Arc<MqttHelper>>,
+) -> Result<HttpResponse, ApiError> {
+    log::info!("Publishing image gcode on mqtt topic...");
+
+    let gcode_path = "./test-api.gcode";
+    let mqtt_gcode_topic = env::var("MQTT_GCODE_TOPIC")
+        .map_err(|e| anyhow!("Could not load environment variable: {e:?}"))?;
+
+    mqtt_helper
+        .publish_gcode(&mqtt_gcode_topic, gcode_path)
+        .map_err(|e| anyhow!("Could not publish gcode: {e:?}"))?;
+
+    log::info!("Gcode published successfully!");
+
+    Ok(HttpResponse::Ok().finish())
+}
+
 #[post("/img")]
-pub async fn process_image(mut payload: Multipart) -> Result<HttpResponse, ApiError> {
+pub async fn process_image(
+    mut payload: Multipart,
+    mqtt_helper: web::Data<Arc<MqttHelper>>,
+) -> Result<HttpResponse, ApiError> {
     let png_img_path = "./test-api.png";
     let svg_img_path = "./test-api.svg";
     let gcode_path = "./test-api.gcode";
@@ -76,7 +98,12 @@ pub async fn process_image(mut payload: Multipart) -> Result<HttpResponse, ApiEr
     convert_gcode_to_png(gcode_path, gcode_img_path)?;
 
     log::info!("Publishing image: {} to mqtt topic", gcode_img_path);
-    publish_img(gcode_img_path)?;
+    let mqtt_img_topic = env::var("MQTT_IMG_TOPIC")
+        .map_err(|e| anyhow!("Could not load environment variable: {e:?}"))?;
+
+    mqtt_helper
+        .publish_image(&mqtt_img_topic, gcode_img_path)
+        .map_err(|e| anyhow!("Could not publish image: {e:?}"))?;
 
     log::info!("Success!");
 
@@ -118,30 +145,6 @@ fn convert_gcode_to_png(gcode_path: &str, output_path: &str) -> anyhow::Result<(
         .map_err(|e| anyhow!("Could not spawn command: {e:?}"))?
         .wait()
         .map_err(|e| anyhow!("Could execute command: {e:?}"))?;
-
-    Ok(())
-}
-
-fn publish_img(img_path: &str) -> anyhow::Result<()> {
-    dotenv().ok();
-
-    let mqtt_broker = env::var("MQTT_BROKER")?;
-    let mqtt_topic = env::var("MQTT_TOPIC")?;
-    let mqtt_client_prefix = env::var("MQTT_CLIENT_PREFIX")?;
-    let uuid = Uuid::new_v4().to_string();
-    let mqtt_client_id = mqtt_client_prefix + &uuid;
-
-    let mqtt_helper = MqttHelper::new(mqtt_broker, mqtt_client_id)
-        .map_err(|e| anyhow!("Could not create mqtt helper: {e:?}"))?;
-    mqtt_helper
-        .connect()
-        .map_err(|e| anyhow!("Could not connect to mqtt server: {e:?}"))?;
-
-    mqtt_helper
-        .publish_image(&mqtt_topic, img_path)
-        .map_err(|e| anyhow!("Could not publish image: {e:?}"))?;
-
-    mqtt_helper.disconnect();
 
     Ok(())
 }
