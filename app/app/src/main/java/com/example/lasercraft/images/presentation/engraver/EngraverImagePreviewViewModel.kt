@@ -6,6 +6,7 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.lasercraft.ApiService
+import com.example.lasercraft.BuildConfig
 import com.example.lasercraft.mqtt.MqttClient
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
@@ -13,8 +14,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
-
-private const val MQTT_RECEIVE_IMAGE_TOPIC = "laser_craft_img"
 
 @HiltViewModel
 class EngraverImagePreviewViewModel @Inject constructor(
@@ -27,7 +26,7 @@ class EngraverImagePreviewViewModel @Inject constructor(
     init {
         mqttClient.connect(onSuccess = {
             mqttClient.subscribe(
-                topic = MQTT_RECEIVE_IMAGE_TOPIC,
+                topic = BuildConfig.MQTT_RECEIVE_IMAGE_TOPIC,
                 onMessage = { handleImageReceived(it) }
             )
         })
