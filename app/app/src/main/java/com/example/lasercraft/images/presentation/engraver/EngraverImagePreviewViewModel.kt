@@ -14,7 +14,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
-private const val MQTT_RECEIVE_IMAGE_TOPIC = "laser_engraver_img"
+private const val MQTT_RECEIVE_IMAGE_TOPIC = "laser_craft_img"
 
 @HiltViewModel
 class EngraverImagePreviewViewModel @Inject constructor(
