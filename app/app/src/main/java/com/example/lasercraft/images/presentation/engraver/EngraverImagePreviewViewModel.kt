@@ -2,21 +2,24 @@ package com.example.lasercraft.images.presentation.engraver
 
 import android.graphics.BitmapFactory
 import android.util.Log
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.example.lasercraft.ApiService
 import com.example.lasercraft.mqtt.MqttClient
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 private const val MQTT_RECEIVE_IMAGE_TOPIC = "laser_engraver_img"
 
 @HiltViewModel
 class EngraverImagePreviewViewModel @Inject constructor(
-    private val mqttClient: MqttClient
+    private val mqttClient: MqttClient,
+    private val api: ApiService,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow<EngraverImagePreviewState>(EngraverImagePreviewState.LOADING)
     val uiState = _uiState.asStateFlow()
@@ -28,6 +31,14 @@ class EngraverImagePreviewViewModel @Inject constructor(
                 onMessage = { handleImageReceived(it) }
             )
         })
+    }
+
+    fun engraveImage() = viewModelScope.launch(Dispatchers.IO) {
+        try {
+            api.engraveImage()
+        } catch (ex: Exception) {
+            Log.d("MQTT ON VIEWMODEL", ex.toString())
+        }
     }
 
     private fun handleImageReceived(imgByteArray: ByteArray) {

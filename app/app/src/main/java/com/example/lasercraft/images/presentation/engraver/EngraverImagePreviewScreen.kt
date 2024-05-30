@@ -56,11 +56,13 @@ fun EngraverImagePreviewScreen(navController: NavHostController) {
                 is EngraverImagePreviewState.LOADING -> null
                 is EngraverImagePreviewState.ERROR -> BottomBar(
                     buttonText = "Retry",
-                    buttonColor = MaterialTheme.colorScheme.error
+                    buttonColor = MaterialTheme.colorScheme.error,
+                    onClick = {}
                 )
                 is EngraverImagePreviewState.SUCCESS -> BottomBar(
-                    buttonText = "Confirm",
-                    buttonColor = MaterialTheme.colorScheme.primary
+                    buttonText = "Engrave",
+                    buttonColor = MaterialTheme.colorScheme.primary,
+                    onClick = { viewModel.engraveImage() }
                 )
             }
         },
@@ -137,7 +139,7 @@ private fun PreviewImageCard(content: @Composable (ColumnScope.() -> Unit)) {
 }
 
 @Composable
-private fun BottomBar(buttonText: String, buttonColor: Color) {
+private fun BottomBar(buttonText: String, buttonColor: Color, onClick: () -> Unit) {
     BottomAppBar(
         containerColor = Color.White,
     ) {
@@ -151,7 +153,7 @@ private fun BottomBar(buttonText: String, buttonColor: Color) {
                     .height(50.dp),
                 shape = MaterialTheme.shapes.medium,
                 colors = ButtonDefaults.buttonColors(containerColor = buttonColor),
-                onClick = { /*TODO*/ }
+                onClick = onClick
             ) {
                 Text(text = buttonText)
             }
