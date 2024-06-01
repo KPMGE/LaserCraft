@@ -49,8 +49,6 @@ fun HomeScreen(navController: NavHostController) {
                 onClick = { navController.navigate(Screens.Camera.route) }
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("Take a picture")
-                    Spacer(modifier = Modifier.height(10.dp))
                     Icon(
                         modifier = Modifier.size(60.dp),
                         imageVector = Icons.Rounded.CameraAlt,
@@ -70,8 +68,6 @@ fun HomeScreen(navController: NavHostController) {
                 onClick = { navController.navigate(Screens.ImagePicker.route) }
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("Pick an image")
-                    Spacer(modifier = Modifier.height(10.dp))
                     Icon(
                         modifier = Modifier.size(60.dp),
                         imageVector = Icons.Rounded.Collections,
