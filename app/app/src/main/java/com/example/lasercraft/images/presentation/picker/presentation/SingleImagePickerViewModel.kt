@@ -38,10 +38,11 @@ class SingleImagePickerViewModel @Inject constructor(
         _uiState.value = SingleImagePickerScreenState.LOADING
 
         val bytes = getBytesFromUri(imgUri)
-        val fileName = "selectedImage.png"
+        val fileName = "image.png"
         val body = bytes?.toRequestBody()
 
         if (body == null) {
+            Log.d(TAG, "Could not convert image bytes to request body")
             _uiState.value = SingleImagePickerScreenState.ERROR
             return@launch
         }

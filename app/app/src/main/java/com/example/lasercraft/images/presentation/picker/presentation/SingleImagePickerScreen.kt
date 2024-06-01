@@ -1,6 +1,7 @@
 package com.example.lasercraft.images.presentation.picker.presentation
 
 import android.net.Uri
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -67,6 +68,10 @@ fun SingleImagePickerScreen(navController: NavHostController) {
             uri = it
             state = State.IMAGE_PICKED
         })
+
+    BackHandler {
+        navController.navigate(Screens.Home.route)
+    }
 
     LaunchedEffect(key1 = Unit) {
         singlePhotoPicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
