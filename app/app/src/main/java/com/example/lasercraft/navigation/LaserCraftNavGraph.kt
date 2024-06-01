@@ -7,7 +7,7 @@ import androidx.navigation.compose.composable
 import com.example.lasercraft.HomeScreen
 import com.example.lasercraft.images.presentation.camera.CameraPreviewScreen
 import com.example.lasercraft.images.presentation.engraver.EngraverImagePreviewScreen
-import com.example.lasercraft.images.presentation.picker.presentation.SingleImagePicker
+import com.example.lasercraft.images.presentation.picker.presentation.SingleImagePickerScreen
 
 sealed class Screens(
     val route: String
@@ -34,7 +34,7 @@ fun LaserCraftNavGraph(navController: NavHostController) {
             CameraPreviewScreen(navController)
         }
         composable(route = Screens.ImagePicker.route) {
-            SingleImagePicker(navController)
+            SingleImagePickerScreen(navController)
         }
     }
 }

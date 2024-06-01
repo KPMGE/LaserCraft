@@ -21,7 +21,7 @@ class MqttClient @Inject constructor(
     private val clientId = BuildConfig.MQTT_CLIENT_ID_PREFIX + UUID.randomUUID().toString()
     private val mqttClient = MqttAndroidClient(context, BuildConfig.MQTT_BROKER_URL, clientId)
 
-    fun connect(onSuccess: () -> Unit) {
+    fun connect(onSuccess: () -> Unit = {}, onError: () -> Unit = {}) {
         Log.d(TAG, "Begin connection")
 
         val options = MqttConnectOptions()
@@ -36,6 +36,7 @@ class MqttClient @Inject constructor(
                 override fun onFailure(asyncActionToken: IMqttToken?, exception: Throwable?) {
                     Log.d(TAG, "Connection failure")
                     Log.d(TAG, exception.toString())
+                    onError()
                 }
             })
 
@@ -45,7 +46,12 @@ class MqttClient @Inject constructor(
 
     }
 
-    fun subscribe(topic: String, qos: Int = 1, onMessage: (ByteArray) -> Unit = {}) {
+    fun subscribe(
+        topic: String,
+        qos: Int = 1,
+        onMessage: (ByteArray) -> Unit = {},
+        onSubscribeError: () -> Unit = {}
+    ) {
         mqttClient.setCallback(object : MqttCallback {
             override fun messageArrived(topic: String?, message: MqttMessage?) {
                 Log.d(TAG, "Received message from topic: $topic")
@@ -70,7 +76,9 @@ class MqttClient @Inject constructor(
                 }
 
                 override fun onFailure(asyncActionToken: IMqttToken?, exception: Throwable?) {
-                    Log.d(TAG, "Failed to subscribe $topic")
+                    Log.e(TAG, "Failed to subscribe $topic")
+                    Log.e(TAG, exception.toString())
+                    onSubscribeError()
                 }
             })
         } catch (e: MqttException) {

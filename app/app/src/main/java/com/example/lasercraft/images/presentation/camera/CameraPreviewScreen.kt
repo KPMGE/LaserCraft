@@ -13,22 +13,29 @@ import androidx.camera.view.PreviewView
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.CameraAlt
 import androidx.compose.material3.Button
-import androidx.compose.material3.Text
+import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavHostController
+import com.example.lasercraft.R
+import com.example.lasercraft.common.ErrorDialog
 import com.example.lasercraft.navigation.Screens
-import java.io.ByteArrayOutputStream
 
 @Composable
 fun CameraPreviewScreen(navController: NavHostController) {
@@ -45,6 +52,7 @@ fun CameraPreviewScreen(navController: NavHostController) {
     }
 
     val viewModel: CameraPreviewViewModel = hiltViewModel()
+    val state = viewModel.state.collectAsState().value
 
     LaunchedEffect(lensFacing) {
         val cameraProvider = context.getCameraProvider()
@@ -53,63 +61,57 @@ fun CameraPreviewScreen(navController: NavHostController) {
         preview.setSurfaceProvider(previewView.surfaceProvider)
     }
 
-    Box(contentAlignment = Alignment.BottomCenter, modifier = Modifier.fillMaxSize()) {
-        AndroidView({ previewView }, modifier = Modifier.fillMaxSize())
-        Button(
-            modifier = Modifier.padding(bottom = 20.dp),
-            onClick = { captureImage(imageCapture, context, onSuccess = { bytes ->
-                viewModel.processImage(bytes)
-                navController.navigate(Screens.EngraverImagePreview.route)
-            }); }
-        ) {
-            Text(text = "Capture Image")
+    when (state) {
+        CameraPreviewScreenState.SUCCESS -> {
+            navController.navigate(Screens.EngraverImagePreview.route)
+        }
+        CameraPreviewScreenState.ERROR -> {
+            ErrorDialog(
+                title = stringResource(id = R.string.app_top_bar), description = stringResource(
+                    id = R.string.camera_screen_preview_error_msg
+                )
+            )
+        }
+        else -> {
+            Box(contentAlignment = Alignment.BottomCenter, modifier = Modifier.fillMaxSize()) {
+                AndroidView({ previewView }, modifier = Modifier.fillMaxSize())
+                Button(
+                    modifier = Modifier.padding(bottom = 20.dp),
+                    shape = CircleShape,
+                    onClick = {
+                        captureImage(imageCapture, context, onSuccess = { bitmap -> viewModel.processImage(bitmap) })
+                    }
+                ) {
+                    Icon(
+                        modifier = Modifier.size(50.dp),
+                        imageVector = Icons.Rounded.CameraAlt,
+                        contentDescription = null
+                    )
+                }
+            }
         }
     }
 }
 
-private fun captureImage(imageCapture: ImageCapture, context: Context, onSuccess: (ByteArray) -> Unit) {
+private fun captureImage(
+    imageCapture: ImageCapture,
+    context: Context,
+    onSuccess: (Bitmap) -> Unit
+) {
     imageCapture.takePicture(
         ContextCompat.getMainExecutor(context),
         object : ImageCapture.OnImageCapturedCallback() {
             override fun onCaptureSuccess(image: ImageProxy) {
                 Log.d("CAMERAX", "Image captured successfully")
-
-                // resizing bitmap image
-                val maxWidth = 1280
-                val  maxHeight = 720
-                val outputStream = ByteArrayOutputStream()
-                val resizedBitmap = image.toBitmap().resize(maxWidth, maxHeight)
-                resizedBitmap.compress(Bitmap.CompressFormat.PNG, 100, outputStream)
-
-                // convert img bitmap into a byte array
-                val imgBytes = outputStream.toByteArray()
-                onSuccess(imgBytes)
-
+                onSuccess(image.toBitmap())
                 // make sure to close the image.
                 image.close()
             }
 
             override fun onError(exception: ImageCaptureException) {
-                Log.d("CAMERAX", "Failed: $exception")
+                Log.e("CAMERAX", "Failed: $exception")
             }
         })
-}
-
-fun Bitmap.resize(maxWidth: Int, maxHeight: Int): Bitmap {
-    val width = this.width
-    val height = this.height
-    val aspectRatio = width.toFloat() / height.toFloat()
-
-    var newWidth = maxWidth
-    var newHeight = maxHeight
-
-    if (newWidth < newHeight) {
-        newHeight = (newWidth / aspectRatio).toInt()
-    } else {
-        newWidth = (newHeight * aspectRatio).toInt()
-    }
-
-    return Bitmap.createScaledBitmap(this, newWidth, newHeight, true)
 }
 
 private fun Context.getCameraProvider(): ProcessCameraProvider {

@@ -20,29 +20,28 @@ class EngraverImagePreviewViewModel @Inject constructor(
     private val mqttClient: MqttClient,
     private val api: ApiService,
 ) : ViewModel() {
-    private val _uiState = MutableStateFlow<EngraverImagePreviewState>(EngraverImagePreviewState.LOADING)
+    private val _uiState =
+        MutableStateFlow<EngraverImagePreviewState>(EngraverImagePreviewState.LOADING)
     val uiState = _uiState.asStateFlow()
 
     init {
-        mqttClient.connect(onSuccess = {
-            mqttClient.subscribe(
-                topic = BuildConfig.MQTT_RECEIVE_IMAGE_TOPIC,
-                onMessage = { handleImageReceived(it) }
-            )
-        })
+        mqttClient.subscribe(
+            topic = BuildConfig.MQTT_RECEIVE_IMAGE_TOPIC,
+            onMessage = { handleImageReceived(it) },
+            onSubscribeError = { _uiState.value = EngraverImagePreviewState.ERROR }
+        )
     }
 
     fun engraveImage() = viewModelScope.launch(Dispatchers.IO) {
         try {
             api.engraveImage()
         } catch (ex: Exception) {
-            Log.d("MQTT ON VIEWMODEL", ex.toString())
+            Log.d(TAG, ex.toString())
+            _uiState.value = EngraverImagePreviewState.ERROR
         }
     }
 
     private fun handleImageReceived(imgByteArray: ByteArray) {
-        Log.d("MQTT ON VIEWMODEL", "mqtt message got")
-
         val bitmap = BitmapFactory.decodeByteArray(
             imgByteArray,
             0,
@@ -51,14 +50,16 @@ class EngraverImagePreviewViewModel @Inject constructor(
 
         if (bitmap == null) {
             _uiState.value = EngraverImagePreviewState.ERROR
-            Log.d("MQTT ON VIEWMODEL", "Error when parsing bitmap")
+            Log.d(TAG, "Error when parsing bitmap")
             return
         }
 
-        Log.d("MQTT ON VIEWMODEL", "Bitmap parsed correctly")
-
         // Decode the drawable resource into a Bitmap
-        val imageBitmap =  bitmap.asImageBitmap()
+        val imageBitmap = bitmap.asImageBitmap()
         _uiState.value = EngraverImagePreviewState.SUCCESS(imageBitmap)
+    }
+
+    private companion object {
+        const val TAG = "ENGRAVER IMAGE PREVIEW"
     }
 }

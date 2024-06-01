@@ -35,9 +35,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavHostController
+import com.example.lasercraft.R
 import com.example.lasercraft.navigation.Screens
 
 @Composable
@@ -53,14 +55,16 @@ fun EngraverImagePreviewScreen(navController: NavHostController) {
         topBar = { TopBar(onBackClick = { navController.navigate(Screens.Home.route) }) },
         bottomBar = {
             when (state) {
-                is EngraverImagePreviewState.LOADING -> null
-                is EngraverImagePreviewState.ERROR -> BottomBar(
-                    buttonText = "Retry",
-                    buttonColor = MaterialTheme.colorScheme.error,
-                    onClick = {}
-                )
+                is EngraverImagePreviewState.LOADING -> {}
+                is EngraverImagePreviewState.ERROR -> {
+                    BottomBar(
+                        buttonText = stringResource(id = R.string.engraver_preview_try_again_msg),
+                        buttonColor = MaterialTheme.colorScheme.error,
+                        onClick = { navController.popBackStack() }
+                    )
+                }
                 is EngraverImagePreviewState.SUCCESS -> BottomBar(
-                    buttonText = "Engrave",
+                    buttonText = stringResource(id = R.string.engraver_preview_confirm_msg),
                     buttonColor = MaterialTheme.colorScheme.primary,
                     onClick = { viewModel.engraveImage() }
                 )
@@ -79,22 +83,21 @@ fun EngraverImagePreviewScreen(navController: NavHostController) {
                     PreviewImageCard {
                         CircularProgressIndicator(modifier = Modifier.size(50.dp))
                         Spacer(modifier = Modifier.height(20.dp))
-                        Text("processando imagem, aguarde...")
+                        Text(text = stringResource(id = R.string.engraver_preview_loading_msg))
                     }
                 }
                 is EngraverImagePreviewState.ERROR -> {
                     PreviewImageCard {
-                        Text(text = "Error while getting image, try again")
+                        Text(text = stringResource(id = R.string.engraver_preview_error_msg))
                     }
                 }
-
                 is EngraverImagePreviewState.SUCCESS -> {
                     PreviewImageCard {
                         BitmapImage(bitmap = state.image)
                     }
                 }
             }
-            
+
         }
     }
 }
@@ -106,7 +109,7 @@ private fun TopBar(onBackClick: () -> Unit) {
         title = {
             Text(
                 style = MaterialTheme.typography.titleMedium,
-                text = "LaserCraft",
+                text = stringResource(id = R.string.app_top_bar),
             )
         },
         navigationIcon = {

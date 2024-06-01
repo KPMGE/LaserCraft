@@ -1,5 +1,6 @@
 package com.example.lasercraft.images.presentation.picker.presentation
 
+import android.annotation.SuppressLint
 import android.app.Application
 import android.content.ContentResolver
 import android.net.Uri
@@ -8,6 +9,8 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.lasercraft.ApiService
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import okhttp3.MediaType
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
@@ -27,22 +30,36 @@ class SingleImagePickerViewModel @Inject constructor(
         application.contentResolver
     }
 
+    private val _uiState =
+        MutableStateFlow(SingleImagePickerScreenState.LOADING)
+    val uiState = _uiState.asStateFlow()
+
     fun processImage(imgUri: Uri) = viewModelScope.launch {
+        _uiState.value = SingleImagePickerScreenState.LOADING
+
         val bytes = getBytesFromUri(imgUri)
-        val fileName = "test.png"
-        val body = bytes?.toRequestBody()!!
+        val fileName = "selectedImage.png"
+        val body = bytes?.toRequestBody()
+
+        if (body == null) {
+            _uiState.value = SingleImagePickerScreenState.ERROR
+            return@launch
+        }
 
         val imagePart = MultipartBody.Part.createFormData("image", fileName, body)
 
         try {
             api.processImage(imagePart)
             Log.d(TAG, "Image sent for processing successfully")
+            _uiState.value = SingleImagePickerScreenState.SUCCESS
         } catch (e: Exception) {
-            Log.d(TAG, "Error while sending the image")
-            Log.d(TAG, e.toString())
+            _uiState.value = SingleImagePickerScreenState.ERROR
+            Log.e(TAG, "Error while sending the image")
+            Log.e(TAG, e.toString())
         }
     }
 
+    @SuppressLint("Recycle")
     private fun getBytesFromUri(uri: Uri): ByteArray? {
         return try {
             val inputStream = contentResolver.openInputStream(uri)
@@ -69,6 +86,6 @@ class SingleImagePickerViewModel @Inject constructor(
     }
 
     private companion object {
-        const val TAG = "PROCESS IMAGE"
+        const val TAG = "SINGLE IMAGE PICKER"
     }
 }

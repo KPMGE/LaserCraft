@@ -1,3 +1,17 @@
 <resources>
     <string name="app_name">Laser Craft</string>
+    <string name="app_top_bar">LaserCraft</string>
+
+    <!-- engraver preview screen -->
+    <string name="engraver_preview_loading_msg">Processando image, aguarde...</string>
+    <string name="engraver_preview_error_msg">Erro ao processar image, tente tente novamente!</string>
+    <string name="engraver_preview_try_again_msg">Enviar novamente</string>
+    <string name="engraver_preview_confirm_msg">Gravar</string>
+
+    <!-- single image picker -->
+    <string name="single_image_picker_confirm_msg">Processar</string>
+    <string name="single_image_picker_error_msg">Não foi possível enviar a imagem, tente novamente.</string>
+
+    <!-- camera screen preview -->
+    <string name="camera_screen_preview_error_msg">Não foi possível enviar a imagem, tente novamente.</string>
 </resources>
