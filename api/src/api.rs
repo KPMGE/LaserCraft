@@ -19,19 +19,24 @@ use mqtt_helper::MqttHelper;
 use std::io::Write;
 use std::process::Command;
 
+const PNG_IMG_PATH: &str = "./image.png";
+const SVG_IMG_PATH: &str = "./image.svg";
+const GCODE_IMG_PATH: &str = "./image-gcode.png";
+const GCODE_PATH: &str = "./image.gcode";
+
 #[derive(Debug)]
 struct ApiError(anyhow::Error);
 
 impl std::fmt::Display for ApiError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{:?}", self.0)
+        log::error!("{}", self.0);
+        write!(f, "")
     }
 }
 
 impl ResponseError for ApiError {
     fn status_code(&self) -> actix_web::http::StatusCode {
-        log::error!("ERROR: {:?}", self);
-        StatusCode::BAD_REQUEST
+        StatusCode::INTERNAL_SERVER_ERROR
     }
 }
 
@@ -50,17 +55,16 @@ async fn healthcheck() -> impl Responder {
 pub async fn engrave_img(
     mqtt_helper: web::Data<Arc<MqttHelper>>,
 ) -> Result<HttpResponse, ApiError> {
-    log::info!("Publishing image gcode on mqtt topic...");
+    log::debug!("Publishing image gcode on mqtt topic...");
 
-    let gcode_path = "./test-api.gcode";
     let mqtt_gcode_topic = env::var("MQTT_GCODE_TOPIC")
         .map_err(|e| anyhow!("Could not load environment variable: {e:?}"))?;
 
     mqtt_helper
-        .publish_gcode(&mqtt_gcode_topic, gcode_path)
+        .publish_gcode(&mqtt_gcode_topic, GCODE_PATH)
         .map_err(|e| anyhow!("Could not publish gcode: {e:?}"))?;
 
-    log::info!("Gcode published successfully!");
+    log::debug!("Gcode published successfully!");
 
     Ok(HttpResponse::Ok().finish())
 }
@@ -70,11 +74,6 @@ pub async fn process_image(
     mut payload: Multipart,
     mqtt_helper: web::Data<Arc<MqttHelper>>,
 ) -> Result<HttpResponse, ApiError> {
-    let png_img_path = "./test-api.png";
-    let svg_img_path = "./test-api.svg";
-    let gcode_path = "./test-api.gcode";
-    let gcode_img_path = "./test-api-gcode.png";
-
     let mut field = payload
         .try_next()
         .await
@@ -83,29 +82,32 @@ pub async fn process_image(
     let content_disposition = field.content_disposition();
     let filename = content_disposition.get_filename().unwrap_or_default();
 
-    log::info!("Received file: {filename}");
+    log::debug!("Received file: {filename}");
+    log::debug!("Saving file: {filename} to disk...");
+    save_file_to_disk(PNG_IMG_PATH, &mut field).await?;
 
-    log::info!("Saving file: {filename} to disk");
-    save_file_to_disk(png_img_path, &mut field).await?;
+    log::debug!("Converting image to svg...");
+    convert_img_to_svg(PNG_IMG_PATH, SVG_IMG_PATH)?;
 
-    log::info!("Converting image to svg...");
-    convert_img_to_svg(png_img_path, svg_img_path)?;
+    log::debug!("Converting image to gcode...");
+    convert_img_to_gcode(GCODE_PATH, SVG_IMG_PATH)?;
 
-    log::info!("Converting image to gcode...");
-    convert_img_to_gcode(gcode_path, svg_img_path)?;
+    log::debug!("Converting gcode to png image...");
+    convert_gcode_to_png(GCODE_PATH, GCODE_IMG_PATH)?;
 
-    log::info!("Converting gcode to png image...");
-    convert_gcode_to_png(gcode_path, gcode_img_path)?;
-
-    log::info!("Publishing image: {} to mqtt topic", gcode_img_path);
     let mqtt_img_topic = env::var("MQTT_IMG_TOPIC")
         .map_err(|e| anyhow!("Could not load environment variable: {e:?}"))?;
 
+    log::debug!(
+        "Publishing image '{}' to mqtt topic '{}'",
+        GCODE_IMG_PATH,
+        mqtt_img_topic
+    );
     mqtt_helper
-        .publish_image(&mqtt_img_topic, gcode_img_path)
+        .publish_image(&mqtt_img_topic, GCODE_IMG_PATH)
         .map_err(|e| anyhow!("Could not publish image: {e:?}"))?;
 
-    log::info!("Success!");
+    log::debug!("Image successfully published!");
 
     Ok(HttpResponse::Ok().finish())
 }
