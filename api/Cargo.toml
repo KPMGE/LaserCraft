@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-paho-mqtt = { git = "https://github.com/eclipse/paho.mqtt.rust.git", branch = "master" }
+# paho-mqtt = { git = "https://github.com/eclipse/paho.mqtt.rust.git", branch = "master" }
 image = "0.23.14"
 dotenv = "0.15.0"
 uuid = { version = "0.8", features = ["v4"] }
@@ -17,3 +17,4 @@ svg2gcode = "0.2.3"
 anyhow = "1.0.86"
 log = "0.4.21"
 env_logger = "0.11.3"
+paho-mqtt = "0.12.5"

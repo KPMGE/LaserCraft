@@ -1,35 +1,50 @@
 use image::{io::Reader as ImageReader, ImageOutputFormat};
+use mqtt::{SslOptions, MQTT_VERSION_5};
 use paho_mqtt::{Client, ConnectOptionsBuilder, CreateOptionsBuilder, Message};
-use std::time::Duration;
 
 const QOS: i32 = 1;
 
 #[derive(Clone)]
 pub struct MqttHelper {
     client: Client,
+    user_name: String,
+    password: String,
 }
 
 type HelperResult<A> = Result<A, Box<dyn std::error::Error>>;
 
 impl MqttHelper {
-    pub fn new(broker_url: String, client_id: String) -> HelperResult<Self> {
-        let create_opts = CreateOptionsBuilder::new()
-            .server_uri(broker_url)
+    pub fn new(
+        broker_url: String,
+        client_id: String,
+        user_name: String,
+        password: String,
+    ) -> HelperResult<Self> {
+        let client_opts = CreateOptionsBuilder::new()
             .client_id(client_id)
+            .mqtt_version(MQTT_VERSION_5)
+            .server_uri(broker_url)
             .finalize();
 
-        let client = Client::new(create_opts)?;
+        // Create the MQTT client
+        let client = Client::new(client_opts).expect("Error creating client");
 
-        Ok(Self { client })
+        Ok(Self {
+            client,
+            user_name,
+            password,
+        })
     }
 
     pub fn connect(&self) -> HelperResult<()> {
-        let conn_opts = ConnectOptionsBuilder::new()
-            .keep_alive_interval(Duration::from_secs(20))
-            .clean_session(true)
+        let options = ConnectOptionsBuilder::new()
+            .ssl_options(SslOptions::default())
+            .clean_start(true)
+            .user_name(self.user_name.clone())
+            .password(self.password.clone())
             .finalize();
 
-        self.client.connect(conn_opts)?;
+        self.client.connect(options)?;
         Ok(())
     }
 

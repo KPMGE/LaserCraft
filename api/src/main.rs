@@ -19,10 +19,12 @@ async fn main() -> anyhow::Result<()> {
     let api_host = env::var("API_HOST")?;
     let mqtt_broker = env::var("MQTT_BROKER")?;
     let mqtt_client_prefix = env::var("MQTT_CLIENT_PREFIX")?;
+    let mqtt_user_name = env::var("MQTT_USER_NAME")?;
+    let mqtt_password = env::var("MQTT_PASSWORD")?;
     let uuid = Uuid::new_v4().to_string();
     let mqtt_client_id = mqtt_client_prefix + &uuid;
 
-    let mqtt_helper = MqttHelper::new(mqtt_broker, mqtt_client_id)
+    let mqtt_helper = MqttHelper::new(mqtt_broker, mqtt_client_id, mqtt_user_name, mqtt_password)
         .map_err(|e| anyhow!("Could not create mqtt helper: {e:?}"))?;
     mqtt_helper
         .connect()
