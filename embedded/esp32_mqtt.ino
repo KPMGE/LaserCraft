@@ -1,5 +1,9 @@
 #include <WiFi.h>
+#include <WiFiClientSecure.h>
 #include <PubSubClient.h>
+
+#define RX 12
+#define TX 13
 
 // WiFi credentials
 const char* ssid = "";
@@ -12,7 +16,7 @@ const char* mqtt_username = "";
 const char* mqtt_password = "";
 const char *mqtt_topic = "laser_craft_gcode";
 
-WiFiClient espClient;
+WiFiClientSecure espClient;
 PubSubClient client(espClient);
 
 void setup_wifi();
@@ -23,6 +27,7 @@ void mqtt_callback(char* topic, byte* payload, unsigned int length);
 
 void setup() {
   Serial.begin(115200);
+  Serial1.begin(115200, SERIAL_8N1, RX, TX);
   setup_wifi();
   setup_mqtt_client();
 }
@@ -69,7 +74,7 @@ void setup_mqtt_client() {
 void reconnect() {
   while (!client.connected()) {
     Serial.println("Attempting MQTT connection...");
-    if (client.connect("ESP32Client")) {
+    if (client.connect("ESP32Client", mqtt_username, mqtt_password)) {
       Serial.println("connected!");
       Serial.println("subscribing to topic: ");
       Serial.println(mqtt_topic);
