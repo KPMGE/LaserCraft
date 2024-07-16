@@ -76,17 +76,20 @@ pub async fn engrave_img(
     let gcode_file =
         File::open(GCODE_PATH).map_err(|e| anyhow!("Could no open gcode file: {e:?}"))?;
 
-    let mut reader = BufReader::new(gcode_file);
+    let mut reader = BufReader::with_capacity(mqtt_gcode_buffer_size, gcode_file);
 
-    let mut buffer: Vec<u8> = Vec::with_capacity(mqtt_gcode_buffer_size);
+    loop {
+        let buffer = reader
+            .fill_buf()
+            .map_err(|e| anyhow!("Error while filling the buffer: {e:?}"))?;
+        let buffer_length = buffer.len();
 
-    while reader.fill_buf().unwrap().len() > 0 {
-        reader
-            .read(&mut buffer)
-            .map_err(|e| anyhow!("Could not read buffer from gcode file: {e:?}"))?;
+        if buffer_length == 0 {
+            break;
+        }
 
         log::debug!("Trying to publish gcode chunk...");
-        let gcode_chunk = String::from_utf8(buffer.clone())
+        let gcode_chunk = String::from_utf8(buffer.to_vec())
             .map_err(|e| anyhow!("Could not convert buffer into string: {e:?}"))?;
 
         mqtt_helper
@@ -101,6 +104,8 @@ pub async fn engrave_img(
         ))
         .await;
         log::debug!("Done sleeping!");
+
+        reader.consume(buffer_length);
     }
 
     log::debug!("Gcode published successfully!");
