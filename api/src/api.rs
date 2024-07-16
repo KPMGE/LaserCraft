@@ -63,7 +63,7 @@ pub async fn engrave_img(
 
     let mqtt_gcode_buffer_size = env::var("MQTT_GCODE_BUFFER_SIZE")
         .map_err(|e| anyhow!("Could not load environment variable: {e:?}"))?
-        .parse::<u8>()
+        .parse::<usize>()
         .map_err(|e| anyhow!("buffer size must be a number: {e:?}"))?;
 
     let mqtt_publish_gcode_delay_in_secs = env::var("MQTT_PUBLISH_GCODE_DELAY_IN_SECS")
@@ -78,7 +78,7 @@ pub async fn engrave_img(
 
     let mut reader = BufReader::new(gcode_file);
 
-    let mut buffer: Vec<u8> = vec![0, mqtt_gcode_buffer_size];
+    let mut buffer: Vec<u8> = Vec::with_capacity(mqtt_gcode_buffer_size);
 
     while reader.fill_buf().unwrap().len() > 0 {
         reader
