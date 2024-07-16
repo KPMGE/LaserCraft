@@ -25,6 +25,8 @@ class MqttClient @Inject constructor(
         Log.d(TAG, "Begin connection")
 
         val options = MqttConnectOptions()
+        options.password = BuildConfig.MQTT_PASSWORD.toCharArray()
+        options.userName = BuildConfig.MQTT_USER_NAME
 
         try {
             mqttClient.connect(options, null, object : IMqttActionListener {

@@ -3,6 +3,7 @@ package com.example.lasercraft
 import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Bundle
+import android.util.Log
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -25,6 +26,13 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // Check if the intent contains an image URI
+        if (intent != null && intent.data!= null) {
+            val sharedImageUri = intent.data
+            Log.d("INTENT", "IMAGE RECEIVED")
+            // Now you can use the sharedImageUri to display the image in your app
+        }
 
         mqttClient.connect(
             onSuccess = {
