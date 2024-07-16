@@ -48,12 +48,9 @@ impl MqttHelper {
         Ok(())
     }
 
-    pub fn publish_gcode(&self, topic: &str, gcode_path: &str) -> HelperResult<()> {
-        let content = std::fs::read_to_string(gcode_path).unwrap();
-
+    pub fn publish_gcode(&self, topic: &str, content: &str) -> HelperResult<()> {
         let msg = Message::new(topic, content, QOS);
         self.client.publish(msg)?;
-
         Ok(())
     }
 

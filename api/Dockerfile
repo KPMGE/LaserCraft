@@ -4,7 +4,7 @@ WORKDIR /build
 
 COPY . ./api
 
-RUN apt-get update && apt-get upgrade && apt-get install git cmake -y
+RUN apt-get update -y && apt-get upgrade -y && apt-get install git cmake -y
 
 RUN cd api && cargo build --release
 

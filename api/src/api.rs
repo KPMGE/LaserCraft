@@ -1,5 +1,6 @@
 use std::env;
 use std::fs::File;
+use std::io::{BufRead, BufReader, Read};
 use std::path::Path;
 use std::sync::Arc;
 
@@ -60,9 +61,47 @@ pub async fn engrave_img(
     let mqtt_gcode_topic = env::var("MQTT_GCODE_TOPIC")
         .map_err(|e| anyhow!("Could not load environment variable: {e:?}"))?;
 
-    mqtt_helper
-        .publish_gcode(&mqtt_gcode_topic, GCODE_PATH)
-        .map_err(|e| anyhow!("Could not publish gcode: {e:?}"))?;
+    let mqtt_gcode_buffer_size = env::var("MQTT_GCODE_BUFFER_SIZE")
+        .map_err(|e| anyhow!("Could not load environment variable: {e:?}"))?
+        .parse::<u8>()
+        .map_err(|e| anyhow!("buffer size must be a number: {e:?}"))?;
+
+    let mqtt_publish_gcode_delay_in_secs = env::var("MQTT_PUBLISH_GCODE_DELAY_IN_SECS")
+        .map_err(|e| anyhow!("Could not load environment variable: {e:?}"))?
+        .parse::<u64>()
+        .map_err(|e| anyhow!("delay must be a number: {e:?}"))?;
+
+    log::debug!("Gcode buffer size: {:?}", mqtt_gcode_buffer_size);
+
+    let gcode_file =
+        File::open(GCODE_PATH).map_err(|e| anyhow!("Could no open gcode file: {e:?}"))?;
+
+    let mut reader = BufReader::new(gcode_file);
+
+    let mut buffer: Vec<u8> = vec![0, mqtt_gcode_buffer_size];
+
+    while reader.fill_buf().unwrap().len() > 0 {
+        reader
+            .read(&mut buffer)
+            .map_err(|e| anyhow!("Could not read buffer from gcode file: {e:?}"))?;
+
+        log::debug!("Trying to publish gcode chunk...");
+        let gcode_chunk = String::from_utf8(buffer.clone())
+            .map_err(|e| anyhow!("Could not convert buffer into string: {e:?}"))?;
+
+        mqtt_helper
+            .publish_gcode(&mqtt_gcode_topic, &gcode_chunk)
+            .map_err(|e| anyhow!("Could not publish gcode: {e:?}"))?;
+
+        log::debug!("Gcode chunk published successfully!");
+
+        log::debug!("Sleeping for {} seconds", mqtt_publish_gcode_delay_in_secs);
+        tokio::time::sleep(tokio::time::Duration::from_secs(
+            mqtt_publish_gcode_delay_in_secs,
+        ))
+        .await;
+        log::debug!("Done sleeping!");
+    }
 
     log::debug!("Gcode published successfully!");
 
