@@ -1,5 +1,5 @@
 #include <SoftwareSerial.h>
-#define SERIAL_SIZE_RX 1024
+// #define SERIAL_SIZE_RX 1024
 
 SoftwareSerial myUart(16, 17);
 
