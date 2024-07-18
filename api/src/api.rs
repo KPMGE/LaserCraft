@@ -14,8 +14,8 @@ use actix_web::web;
 use actix_web::ResponseError;
 use actix_web::{post, HttpResponse, Responder};
 use anyhow::anyhow;
-use futures::StreamExt;
 use futures::TryStreamExt;
+use futures::{AsyncBufReadExt, StreamExt};
 use mqtt_helper::MqttHelper;
 use std::io::Write;
 use std::process::Command;
@@ -56,11 +56,6 @@ async fn healthcheck() -> impl Responder {
 pub async fn engrave_img(
     mqtt_helper: web::Data<Arc<MqttHelper>>,
 ) -> Result<HttpResponse, ApiError> {
-    let mqtt_gcode_buffer_size = env::var("MQTT_GCODE_BUFFER_SIZE")
-        .map_err(|e| anyhow!("Could not load environment variable: {e:?}"))?
-        .parse::<usize>()
-        .map_err(|e| anyhow!("buffer size must be a number: {e:?}"))?;
-
     let mqtt_gcode_next_chunk_topic = env::var("MQTT_GCODE_NEXT_CHUNK_TOPIC")
         .map_err(|e| anyhow!("Could not load environment variable: {e:?}"))?;
 
@@ -70,10 +65,10 @@ pub async fn engrave_img(
     let gcode_file =
         File::open(GCODE_PATH).map_err(|e| anyhow!("Could no open gcode file: {e:?}"))?;
 
-    let mut reader = BufReader::with_capacity(mqtt_gcode_buffer_size, gcode_file);
+    let mut reader = BufReader::new(gcode_file);
 
     publish_next_gcode_chunk(&mut reader, mqtt_helper.clone())?;
-
+    
     actix_web::rt::spawn(async move {
         let _ = mqtt_helper
             .subscribe(&mqtt_gcode_next_chunk_topic, |msg| {
@@ -192,18 +187,31 @@ fn publish_next_gcode_chunk(
     let mqtt_gcode_topic = env::var("MQTT_GCODE_TOPIC")
         .map_err(|e| anyhow!("Could not load environment variable: {e:?}"))?;
 
-    let buffer = reader
-        .fill_buf()
-        .map_err(|e| anyhow!("Error while filling the buffer: {e:?}"))?;
-    let buffer_length = buffer.len();
+    let mut gcode_chunk = String::new();
 
-    if buffer_length == 0 {
+    let bytes_read = reader
+        .read_line(&mut gcode_chunk)
+        .map_err(|e| anyhow!("Could not read line from reader: {e:?}"))?;
+
+    if bytes_read == 0 {
         return Ok(());
     }
 
+    /*
+
+        let buffer = reader
+            .fill_buf()
+            .map_err(|e| anyhow!("Error while filling the buffer: {e:?}"))?;
+        let buffer_length = buffer.len();
+
+        if buffer_length == 0 {
+            return Ok(());
+        }
+    */
+
     log::debug!("Trying to publish gcode chunk...");
-    let gcode_chunk = String::from_utf8(buffer.to_vec())
-        .map_err(|e| anyhow!("Could not convert buffer into string: {e:?}"))?;
+    // let gcode_chunk = String::from_utf8(buffer.to_vec())
+    //     .map_err(|e| anyhow!("Could not convert buffer into string: {e:?}"))?;
 
     mqtt_helper
         .publish_gcode(&mqtt_gcode_topic, &gcode_chunk)
@@ -211,8 +219,8 @@ fn publish_next_gcode_chunk(
 
     log::debug!("Gcode chunk published successfully!");
 
-    reader.consume(buffer_length);
+    gcode_chunk.clear();
+    //reader.consume(buffer_length);
 
     Ok(())
 }
-
