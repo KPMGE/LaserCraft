@@ -67,4 +67,18 @@ impl MqttHelper {
 
         Ok(())
     }
+
+    pub fn subscribe<F>(&self, topic: &str, mut on_message: F) -> HelperResult<()>
+    where
+        F: FnMut(&str),
+    {
+        self.client.subscribe(topic, 0).unwrap();
+        let receiver = self.client.start_consuming();
+
+        loop {
+            if let Some(msg) = receiver.recv().unwrap() {
+                on_message(&msg.payload_str().to_string());
+            }
+        }
+    }
 }

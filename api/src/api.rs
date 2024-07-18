@@ -56,59 +56,35 @@ async fn healthcheck() -> impl Responder {
 pub async fn engrave_img(
     mqtt_helper: web::Data<Arc<MqttHelper>>,
 ) -> Result<HttpResponse, ApiError> {
-    log::debug!("Publishing image gcode on mqtt topic...");
-
-    let mqtt_gcode_topic = env::var("MQTT_GCODE_TOPIC")
-        .map_err(|e| anyhow!("Could not load environment variable: {e:?}"))?;
-
     let mqtt_gcode_buffer_size = env::var("MQTT_GCODE_BUFFER_SIZE")
         .map_err(|e| anyhow!("Could not load environment variable: {e:?}"))?
         .parse::<usize>()
         .map_err(|e| anyhow!("buffer size must be a number: {e:?}"))?;
 
-    let mqtt_publish_gcode_delay_in_secs = env::var("MQTT_PUBLISH_GCODE_DELAY_IN_SECS")
-        .map_err(|e| anyhow!("Could not load environment variable: {e:?}"))?
-        .parse::<u64>()
-        .map_err(|e| anyhow!("delay must be a number: {e:?}"))?;
+    let mqtt_gcode_next_chunk_topic = env::var("MQTT_GCODE_NEXT_CHUNK_TOPIC")
+        .map_err(|e| anyhow!("Could not load environment variable: {e:?}"))?;
 
-    log::debug!("Gcode buffer size: {:?}", mqtt_gcode_buffer_size);
+    let mqtt_gcode_next_chunk_message = env::var("MQTT_GCODE_NEXT_CHUNK_MESSAGE")
+        .map_err(|e| anyhow!("Could not load environment variable: {e:?}"))?;
 
     let gcode_file =
         File::open(GCODE_PATH).map_err(|e| anyhow!("Could no open gcode file: {e:?}"))?;
 
     let mut reader = BufReader::with_capacity(mqtt_gcode_buffer_size, gcode_file);
 
-    loop {
-        let buffer = reader
-            .fill_buf()
-            .map_err(|e| anyhow!("Error while filling the buffer: {e:?}"))?;
-        let buffer_length = buffer.len();
+    publish_next_gcode_chunk(&mut reader, mqtt_helper.clone())?;
 
-        if buffer_length == 0 {
-            break;
-        }
-
-        log::debug!("Trying to publish gcode chunk...");
-        let gcode_chunk = String::from_utf8(buffer.to_vec())
-            .map_err(|e| anyhow!("Could not convert buffer into string: {e:?}"))?;
-
-        mqtt_helper
-            .publish_gcode(&mqtt_gcode_topic, &gcode_chunk)
-            .map_err(|e| anyhow!("Could not publish gcode: {e:?}"))?;
-
-        log::debug!("Gcode chunk published successfully!");
-
-        log::debug!("Sleeping for {} seconds", mqtt_publish_gcode_delay_in_secs);
-        tokio::time::sleep(tokio::time::Duration::from_secs(
-            mqtt_publish_gcode_delay_in_secs,
-        ))
-        .await;
-        log::debug!("Done sleeping!");
-
-        reader.consume(buffer_length);
-    }
-
-    log::debug!("Gcode published successfully!");
+    actix_web::rt::spawn(async move {
+        let _ = mqtt_helper
+            .subscribe(&mqtt_gcode_next_chunk_topic, |msg| {
+                if msg == mqtt_gcode_next_chunk_message {
+                    if let Err(e) = publish_next_gcode_chunk(&mut reader, mqtt_helper.clone()) {
+                        log::error!("error while publish_next_gcode_chunk: {e:?}");
+                    }
+                }
+            })
+            .map_err(|e| log::error!("error while getting mqtt message: {e:?}"));
+    });
 
     Ok(HttpResponse::Ok().finish())
 }
@@ -208,3 +184,35 @@ async fn save_file_to_disk(file_path: &str, field: &mut Field) -> anyhow::Result
 
     Ok(())
 }
+
+fn publish_next_gcode_chunk(
+    reader: &mut BufReader<File>,
+    mqtt_helper: web::Data<Arc<MqttHelper>>,
+) -> Result<(), ApiError> {
+    let mqtt_gcode_topic = env::var("MQTT_GCODE_TOPIC")
+        .map_err(|e| anyhow!("Could not load environment variable: {e:?}"))?;
+
+    let buffer = reader
+        .fill_buf()
+        .map_err(|e| anyhow!("Error while filling the buffer: {e:?}"))?;
+    let buffer_length = buffer.len();
+
+    if buffer_length == 0 {
+        return Ok(());
+    }
+
+    log::debug!("Trying to publish gcode chunk...");
+    let gcode_chunk = String::from_utf8(buffer.to_vec())
+        .map_err(|e| anyhow!("Could not convert buffer into string: {e:?}"))?;
+
+    mqtt_helper
+        .publish_gcode(&mqtt_gcode_topic, &gcode_chunk)
+        .map_err(|e| anyhow!("Could not publish gcode: {e:?}"))?;
+
+    log::debug!("Gcode chunk published successfully!");
+
+    reader.consume(buffer_length);
+
+    Ok(())
+}
+
