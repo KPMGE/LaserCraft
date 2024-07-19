@@ -1,6 +1,7 @@
+use regex::Regex;
 use std::env;
 use std::fs::File;
-use std::io::{BufRead, BufReader, Read};
+use std::io::{BufRead, BufReader, Cursor, Read};
 use std::path::Path;
 use std::sync::Arc;
 
@@ -14,8 +15,8 @@ use actix_web::web;
 use actix_web::ResponseError;
 use actix_web::{post, HttpResponse, Responder};
 use anyhow::anyhow;
+use futures::StreamExt;
 use futures::TryStreamExt;
-use futures::{AsyncBufReadExt, StreamExt};
 use mqtt_helper::MqttHelper;
 use std::io::Write;
 use std::process::Command;
@@ -62,13 +63,18 @@ pub async fn engrave_img(
     let mqtt_gcode_next_chunk_message = env::var("MQTT_GCODE_NEXT_CHUNK_MESSAGE")
         .map_err(|e| anyhow!("Could not load environment variable: {e:?}"))?;
 
-    let gcode_file =
+    let mut gcode_file =
         File::open(GCODE_PATH).map_err(|e| anyhow!("Could no open gcode file: {e:?}"))?;
 
-    let mut reader = BufReader::new(gcode_file);
+    let mut file_contents = String::new();
+    gcode_file.read_to_string(&mut file_contents).unwrap();
+    let simplified_gcode = simplify_gcode(&file_contents).unwrap();
+
+    let cursor = Cursor::new(simplified_gcode);
+    let mut reader = BufReader::new(cursor);
 
     publish_next_gcode_chunk(&mut reader, mqtt_helper.clone())?;
-    
+
     actix_web::rt::spawn(async move {
         let _ = mqtt_helper
             .subscribe(&mqtt_gcode_next_chunk_topic, |msg| {
@@ -97,23 +103,23 @@ pub async fn process_image(
     let content_disposition = field.content_disposition();
     let filename = content_disposition.get_filename().unwrap_or_default();
 
-    log::debug!("Received file: {filename}");
-    log::debug!("Saving file: {filename} to disk...");
+    log::info!("Received file: {filename}");
+    log::info!("Saving file: {filename} to disk...");
     save_file_to_disk(PNG_IMG_PATH, &mut field).await?;
 
-    log::debug!("Converting image to svg...");
+    log::info!("Converting image to svg...");
     convert_img_to_svg(PNG_IMG_PATH, SVG_IMG_PATH)?;
 
-    log::debug!("Converting image to gcode...");
+    log::info!("Converting image to gcode...");
     convert_img_to_gcode(GCODE_PATH, SVG_IMG_PATH)?;
 
-    log::debug!("Converting gcode to png image...");
+    log::info!("Converting gcode to png image...");
     convert_gcode_to_png(GCODE_PATH, GCODE_IMG_PATH)?;
 
     let mqtt_img_topic = env::var("MQTT_IMG_TOPIC")
         .map_err(|e| anyhow!("Could not load environment variable: {e:?}"))?;
 
-    log::debug!(
+    log::info!(
         "Publishing image '{}' to mqtt topic '{}'",
         GCODE_IMG_PATH,
         mqtt_img_topic
@@ -122,7 +128,7 @@ pub async fn process_image(
         .publish_image(&mqtt_img_topic, GCODE_IMG_PATH)
         .map_err(|e| anyhow!("Could not publish image: {e:?}"))?;
 
-    log::debug!("Image successfully published!");
+    log::info!("Image successfully published!");
 
     Ok(HttpResponse::Ok().finish())
 }
@@ -173,7 +179,6 @@ async fn save_file_to_disk(file_path: &str, field: &mut Field) -> anyhow::Result
         bytes.extend_from_slice(&chunk);
     }
 
-    // save received file to disk
     let mut file = File::create(file_path)?;
     file.write_all(&bytes)?;
 
@@ -181,46 +186,42 @@ async fn save_file_to_disk(file_path: &str, field: &mut Field) -> anyhow::Result
 }
 
 fn publish_next_gcode_chunk(
-    reader: &mut BufReader<File>,
+    reader: &mut BufReader<Cursor<String>>,
     mqtt_helper: web::Data<Arc<MqttHelper>>,
 ) -> Result<(), ApiError> {
     let mqtt_gcode_topic = env::var("MQTT_GCODE_TOPIC")
         .map_err(|e| anyhow!("Could not load environment variable: {e:?}"))?;
 
-    let mut gcode_chunk = String::new();
+    let gcode_chunk_amount_lines = env::var("GCODE_CHUNK_AMOUNT_LINES")
+        .map_err(|e| anyhow!("Could not load environment variable: {e:?}"))?
+        .parse::<usize>()
+        .map_err(|e| anyhow!("Could not parse GCODE_CHUNK_AMOUNT_LINES into usize: {e:?}"))?;
 
-    let bytes_read = reader
-        .read_line(&mut gcode_chunk)
-        .map_err(|e| anyhow!("Could not read line from reader: {e:?}"))?;
-
-    if bytes_read == 0 {
-        return Ok(());
-    }
-
-    /*
-
-        let buffer = reader
-            .fill_buf()
-            .map_err(|e| anyhow!("Error while filling the buffer: {e:?}"))?;
-        let buffer_length = buffer.len();
-
-        if buffer_length == 0 {
-            return Ok(());
-        }
-    */
-
-    log::debug!("Trying to publish gcode chunk...");
-    // let gcode_chunk = String::from_utf8(buffer.to_vec())
-    //     .map_err(|e| anyhow!("Could not convert buffer into string: {e:?}"))?;
+    let lines = reader
+        .lines()
+        .take(gcode_chunk_amount_lines)
+        .filter_map(Result::ok)
+        .collect::<Vec<_>>()
+        .join("\n");
 
     mqtt_helper
-        .publish_gcode(&mqtt_gcode_topic, &gcode_chunk)
+        .publish_gcode(&mqtt_gcode_topic, &lines)
         .map_err(|e| anyhow!("Could not publish gcode: {e:?}"))?;
 
-    log::debug!("Gcode chunk published successfully!");
-
-    gcode_chunk.clear();
-    //reader.consume(buffer_length);
+    log::info!("Gcode chunk published successfully!");
 
     Ok(())
+}
+
+fn simplify_gcode(buffer: &str) -> anyhow::Result<String, anyhow::Error> {
+    let g0_re = Regex::new(r"G0").unwrap();
+    let gcode_no_g0 = g0_re.replace_all(buffer, "G1");
+
+    let number_format_re = Regex::new(r"(?P<formated_number>\d+\.\d\d)\d+").unwrap();
+    let gcode_formated = number_format_re.replace_all(&gcode_no_g0, "${formated_number}");
+
+    let gcode_comment_re = Regex::new(r";.*").unwrap();
+    let gcode_no_comment = gcode_comment_re.replace_all(&gcode_formated, "");
+
+    Ok(gcode_no_comment.to_string())
 }
