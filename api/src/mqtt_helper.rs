@@ -77,7 +77,7 @@ impl MqttHelper {
 
         loop {
             if let Some(msg) = receiver.recv().unwrap() {
-                on_message(&msg.payload_str().to_string());
+                on_message(msg.payload_str().as_ref());
             }
         }
     }
