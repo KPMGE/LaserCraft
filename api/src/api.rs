@@ -108,9 +108,9 @@ pub async fn process_image(
     log::info!("Saving file: {filename} to disk...");
     save_file_to_disk(PNG_IMG_PATH, &mut field).await?;
 
-    log::info!("Scaling image...");
-    scale_image(PNG_IMG_PATH)?;
-    log::info!("Image scaled successfully!");
+    // log::info!("Scaling image...");
+    // scale_image(PNG_IMG_PATH)?;
+    // log::info!("Image scaled successfully!");
 
     log::info!("Converting image to svg...");
     convert_img_to_svg(PNG_IMG_PATH, SVG_IMG_PATH)?;
