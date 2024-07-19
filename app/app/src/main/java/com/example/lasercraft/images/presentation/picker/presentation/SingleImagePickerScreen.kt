@@ -1,10 +1,17 @@
 package com.example.lasercraft.images.presentation.picker.presentation
 
+import android.app.Activity
+import android.content.Context
+import android.content.ContextWrapper
+import android.content.Intent
 import android.net.Uri
+import android.os.Parcelable
+import android.util.Log
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
@@ -39,11 +46,15 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.core.content.IntentCompat.getParcelableExtra
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavHostController
 import coil.compose.AsyncImage
+import coil.compose.rememberAsyncImagePainter
+import coil.compose.rememberImagePainter
 import com.example.lasercraft.R
 import com.example.lasercraft.common.ErrorDialog
 import com.example.lasercraft.navigation.Screens
@@ -51,6 +62,12 @@ import com.example.lasercraft.navigation.Screens
 private enum class State {
     IMAGE_PICKED,
     WAITING_IMAGE
+}
+
+fun Context.findActivity(): Activity? = when (this) {
+    is Activity -> this
+    is ContextWrapper -> baseContext.findActivity()
+    else -> null
 }
 
 @Composable
@@ -62,6 +79,16 @@ fun SingleImagePickerScreen(navController: NavHostController) {
         mutableStateOf<Uri?>(null)
     }
 
+    val activity = LocalContext.current.findActivity()
+    val intent = activity?.intent
+    val imageFromIntent = intent?.getParcelableExtra<Parcelable>(Intent.EXTRA_STREAM) as? Uri
+
+    BackHandler {
+        navController.navigate(Screens.Home.route)
+    }
+
+    Log.d("IMAGE CONTNET: ", imageFromIntent.toString())
+
     val singlePhotoPicker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickVisualMedia(),
         onResult = {
@@ -69,12 +96,13 @@ fun SingleImagePickerScreen(navController: NavHostController) {
             state = State.IMAGE_PICKED
         })
 
-    BackHandler {
-        navController.navigate(Screens.Home.route)
-    }
-
     LaunchedEffect(key1 = Unit) {
-        singlePhotoPicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+        if (imageFromIntent == null) {
+            singlePhotoPicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+        } else {
+            uri = imageFromIntent
+            state = State.IMAGE_PICKED
+        }
     }
 
     when (uiState) {
@@ -130,7 +158,6 @@ fun SingleImagePickerScreen(navController: NavHostController) {
         }
     }
 }
-
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

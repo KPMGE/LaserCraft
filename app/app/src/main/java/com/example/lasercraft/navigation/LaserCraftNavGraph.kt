@@ -1,9 +1,11 @@
 package com.example.lasercraft.navigation
 
+import android.content.Intent
 import androidx.compose.runtime.Composable
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.navigation.navDeepLink
 import com.example.lasercraft.HomeScreen
 import com.example.lasercraft.images.presentation.camera.CameraPreviewScreen
 import com.example.lasercraft.images.presentation.engraver.EngraverImagePreviewScreen
@@ -33,7 +35,16 @@ fun LaserCraftNavGraph(navController: NavHostController) {
         composable(route = Screens.Camera.route) {
             CameraPreviewScreen(navController)
         }
-        composable(route = Screens.ImagePicker.route) {
+        composable(route = Screens.ImagePicker.route, deepLinks = listOf(
+            navDeepLink {
+                action = Intent.ACTION_SEND
+                mimeType = "image/*"
+            },
+            navDeepLink {
+                action = Intent.ACTION_SEND
+                mimeType = "text/*"
+            }
+        )) {
             SingleImagePickerScreen(navController)
         }
     }

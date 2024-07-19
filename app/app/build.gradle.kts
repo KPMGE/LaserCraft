@@ -39,6 +39,8 @@ android {
         buildConfigField("String", "MQTT_BROKER_URL", "\"${envProperties.getProperty("mqtt_broker_url")}\"")
         buildConfigField("String", "MQTT_CLIENT_ID_PREFIX", "\"${envProperties.getProperty("mqtt_client_id_prefix")}\"")
         buildConfigField("String", "MQTT_RECEIVE_IMAGE_TOPIC", "\"${envProperties.getProperty("mqtt_receive_image_topic")}\"")
+        buildConfigField("String", "MQTT_USER_NAME", "\"${envProperties.getProperty("mqtt_user_name")}\"")
+        buildConfigField("String", "MQTT_PASSWORD", "\"${envProperties.getProperty("mqtt_password")}\"")
     }
 
     buildTypes {
@@ -48,6 +50,7 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            signingConfig = signingConfigs.getByName("debug")
         }
     }
     compileOptions {

@@ -3,9 +3,13 @@ package com.example.lasercraft.images.presentation.picker.presentation
 import android.annotation.SuppressLint
 import android.app.Application
 import android.content.ContentResolver
+import android.content.Intent
 import android.net.Uri
+import android.os.Parcelable
 import android.util.Log
+import androidx.core.content.IntentCompat.getParcelableExtra
 import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
 import com.example.lasercraft.ApiService
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -24,7 +28,8 @@ import javax.inject.Inject
 @HiltViewModel
 class SingleImagePickerViewModel @Inject constructor(
     private val api: ApiService,
-    application: Application
+    application: Application,
+    savedStateHandle: SavedStateHandle
 ): AndroidViewModel(Application()) {
     private val contentResolver: ContentResolver by lazy {
         application.contentResolver
@@ -50,9 +55,9 @@ class SingleImagePickerViewModel @Inject constructor(
         val imagePart = MultipartBody.Part.createFormData("image", fileName, body)
 
         try {
+            _uiState.value = SingleImagePickerScreenState.SUCCESS
             api.processImage(imagePart)
             Log.d(TAG, "Image sent for processing successfully")
-            _uiState.value = SingleImagePickerScreenState.SUCCESS
         } catch (e: Exception) {
             _uiState.value = SingleImagePickerScreenState.ERROR
             Log.e(TAG, "Error while sending the image")
