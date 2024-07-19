@@ -1,3 +1,4 @@
+use image::imageops::FilterType;
 use regex::Regex;
 use std::env;
 use std::fs::File;
@@ -107,14 +108,21 @@ pub async fn process_image(
     log::info!("Saving file: {filename} to disk...");
     save_file_to_disk(PNG_IMG_PATH, &mut field).await?;
 
+    log::info!("Scaling image...");
+    scale_image(PNG_IMG_PATH)?;
+    log::info!("Image scaled successfully!");
+
     log::info!("Converting image to svg...");
     convert_img_to_svg(PNG_IMG_PATH, SVG_IMG_PATH)?;
+    log::info!("Image converted to svg successfully!");
 
     log::info!("Converting image to gcode...");
     convert_img_to_gcode(GCODE_PATH, SVG_IMG_PATH)?;
+    log::info!("Image converted to gcode successfully");
 
     log::info!("Converting gcode to png image...");
     convert_gcode_to_png(GCODE_PATH, GCODE_IMG_PATH)?;
+    log::info!("Gcode converted to png successfully!");
 
     let mqtt_img_topic = env::var("MQTT_IMG_TOPIC")
         .map_err(|e| anyhow!("Could not load environment variable: {e:?}"))?;
@@ -168,6 +176,29 @@ fn convert_gcode_to_png(gcode_path: &str, output_path: &str) -> anyhow::Result<(
         .map_err(|e| anyhow!("Could not spawn command: {e:?}"))?
         .wait()
         .map_err(|e| anyhow!("Could execute command: {e:?}"))?;
+
+    Ok(())
+}
+
+fn scale_image(img_path: &str) -> anyhow::Result<()> {
+    let img_target_width = env::var("IMG_TARGET_WIDTH")
+        .map_err(|e| anyhow!("Could not load environment variable: {e:?}"))?
+        .parse::<u32>()
+        .map_err(|e| anyhow!("Could not parse IMG_TARGET_WIDTH to u32: {e:?}"))?;
+
+    let img_target_height = env::var("IMG_TARGET_HEIGHT")
+        .map_err(|e| anyhow!("Could not load environment variable: {e:?}"))?
+        .parse::<u32>()
+        .map_err(|e| anyhow!("Could not parse IMG_TARGET_WIDTH to u32: {e:?}"))?;
+
+    let img =
+        image::open(img_path).map_err(|e| anyhow!("Could not open image for scaling: {e:?}"))?;
+
+    let resized = img.resize_to_fill(img_target_width, img_target_height, FilterType::Lanczos3);
+
+    resized
+        .save(img_path)
+        .map_err(|e| anyhow!("Could not save resized image: {e:?}"))?;
 
     Ok(())
 }
