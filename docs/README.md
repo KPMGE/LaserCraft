@@ -34,10 +34,11 @@ The hardware design for this project depends on the CNC controller you will choo
  - Wires
  - Some terminal blocks
 
+#
 ### Schematic
+Put schematic here
 
-
-
+#
 ### Stepper motors
 In our case, we have encountered some old DVD drivers with the stepper motors, but you can use other stepper motors like Nemma-17 for example. The good part of DVD stepper motors is that it comes with structure and rails that will be used in the project. 
 ![alt text](<WhatsApp Image 2024-07-20 at 17.34.10_b04caa8b.jpg>)
@@ -46,6 +47,7 @@ Below there's the specification of the stepper motor:
 ![alt text](image.png)
 This image contains some informations that will be used to calibrate the GRBL later. For example: the step angle of the motor is 18º. In this way, for a complete  revolution (360º), you will need 20 steps. The lead pitch is important too. It says about linear distance the carriage travels in one revolution.
 
+#
 ### Arduino and GRBL
 You can check how GRBL works [here](https://github.com/gnea/grbl/wiki). However, I will talk about some important details below.
 
@@ -68,12 +70,14 @@ We also must set other flags like steps/mm. This parameter depends on the steppe
 
 Microsteps depends on the Easydriver configuration. Check the next section.
 
+#
 ### Motor driver
 The Easydriver V44 A3967 is an easy way to controll the stepper motor. You just need to connect some pins to the Arduino and it works magically. Check the connections in the schematic. 
 
 #### Microstepping
 This driver has 4 modes of microstepping that can be checked [here](https://www.schmalzhaus.com/EasyDriver/). The default is 1/8. It means that you need 8 microsteps to complete 1 normal step. It will be used to calculate the steps/mm in the section above. 
 
+#
 ### Laser connection
 The laser works around 5V. However, we can't connect it directly to the pin11 of Arduino. The current it drains is so high and it would ruin the microcontroller. In this way, we chose to use a MOSFET. The PWM from pin11 connected to the gate of transistor will turn on the drain-source junction and power the laser.
 
