@@ -24,6 +24,7 @@ use std::process::Command;
 
 const PNG_IMG_PATH: &str = "./image.png";
 const SVG_IMG_PATH: &str = "./image.svg";
+const SCALED_SVG_IMG_PATH: &str = "./scaled-image.svg";
 const GCODE_IMG_PATH: &str = "./image-gcode.png";
 const GCODE_PATH: &str = "./image.gcode";
 
@@ -71,8 +72,6 @@ pub async fn engrave_img(
     gcode_file.read_to_string(&mut file_contents).unwrap();
     let simplified_gcode = simplify_gcode(&file_contents).unwrap();
 
-    println!("simplified_gcode: \n {}", simplified_gcode);
-
     let cursor = Cursor::new(simplified_gcode);
     let mut reader = BufReader::new(cursor);
 
@@ -110,16 +109,16 @@ pub async fn process_image(
     log::info!("Saving file: {filename} to disk...");
     save_file_to_disk(PNG_IMG_PATH, &mut field).await?;
 
-    // log::info!("Scaling image...");
-    // scale_image(PNG_IMG_PATH)?;
-    // log::info!("Image scaled successfully!");
-
     log::info!("Converting image to svg...");
     convert_img_to_svg(PNG_IMG_PATH, SVG_IMG_PATH)?;
     log::info!("Image converted to svg successfully!");
 
+    log::info!("Scaling svg image...");
+    scale_image(SVG_IMG_PATH, SCALED_SVG_IMG_PATH)?;
+    log::info!("Image scaled successfully!");
+
     log::info!("Converting image to gcode...");
-    convert_img_to_gcode(GCODE_PATH, SVG_IMG_PATH)?;
+    convert_img_to_gcode(GCODE_PATH, SCALED_SVG_IMG_PATH)?;
     log::info!("Image converted to gcode successfully");
 
     log::info!("Converting gcode to png image...");
@@ -190,7 +189,7 @@ fn convert_gcode_to_png(gcode_path: &str, output_path: &str) -> anyhow::Result<(
     Ok(())
 }
 
-fn scale_image(img_path: &str) -> anyhow::Result<()> {
+fn scale_image(img_path: &str, scaled_img_path: &str) -> anyhow::Result<()> {
     let img_target_width = env::var("IMG_TARGET_WIDTH")
         .map_err(|e| anyhow!("Could not load environment variable: {e:?}"))?
         .parse::<u32>()
@@ -201,14 +200,21 @@ fn scale_image(img_path: &str) -> anyhow::Result<()> {
         .parse::<u32>()
         .map_err(|e| anyhow!("Could not parse IMG_TARGET_WIDTH to u32: {e:?}"))?;
 
-    let img =
-        image::open(img_path).map_err(|e| anyhow!("Could not open image for scaling: {e:?}"))?;
-
-    let resized = img.resize_to_fill(img_target_width, img_target_height, FilterType::Lanczos3);
-
-    resized
-        .save(img_path)
-        .map_err(|e| anyhow!("Could not save resized image: {e:?}"))?;
+    Command::new("rsvg-convert")
+        .arg("--keep-aspect-ratio")
+        .arg("--width")
+        .arg(img_target_width.to_string())
+        .arg("--height")
+        .arg(img_target_height.to_string())
+        .arg(img_path)
+        .arg("--format")
+        .arg("svg")
+        .arg("--output")
+        .arg(scaled_img_path)
+        .spawn()
+        .map_err(|e| anyhow!("Could not spawn command: {e:?}"))?
+        .wait()
+        .map_err(|e| anyhow!("Could execute command: {e:?}"))?;
 
     Ok(())
 }
@@ -262,7 +268,6 @@ fn simplify_gcode(buffer: &str) -> anyhow::Result<String, anyhow::Error> {
 
     let g0_re = Regex::new(r"G0 (?P<rest_of_line>.*)").unwrap();
     let replace_g0_str = format!("G1 ${{rest_of_line}} F{gcode_position_feedrate}");
-    println!("REPLACE G0 STR: {}", replace_g0_str);
     let gcode_no_g0 = g0_re.replace_all(buffer, replace_g0_str);
 
     let number_format_re = Regex::new(r"(?P<formated_number>\d+\.\d\d)\d+").unwrap();

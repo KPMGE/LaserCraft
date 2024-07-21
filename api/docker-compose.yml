@@ -8,7 +8,7 @@ services:
       hivemq:
         condition: service_healthy
     environment:
-      RUST_LOG: "error, info"
+      RUST_LOG: error,info
       API_HOST: ${API_HOST}
       MQTT_BROKER: ${MQTT_BROKER}
       MQTT_PASSWORD: ${MQTT_PASSWORD}

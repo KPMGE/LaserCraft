@@ -24,6 +24,7 @@ COPY --from=build /build/api/target/release/laser_craft_api /usr/bin/laser_craft
 WORKDIR /api
 
 RUN pip install gcode2image
+RUN apt-get update -y && apt-get upgrade -y && apt-get install librsvg2-bin -y
 
 EXPOSE 3333
 
