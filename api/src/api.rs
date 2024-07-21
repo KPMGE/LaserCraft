@@ -151,7 +151,14 @@ fn convert_img_to_svg(input_path: &str, output_path: &str) -> anyhow::Result<()>
 }
 
 fn convert_img_to_gcode(gcode_path: &str, svg_path: &str) -> anyhow::Result<()> {
+    let gcode_feedrate = env::var("GCODE_FEEDRATE")
+        .map_err(|e| anyhow!("Could not load environment variable: {e:?}"))?
+        .parse::<i32>()
+        .map_err(|e| anyhow!("Could not parse GCODE_FEEDRATE to i32: {e:?}"))?;
+
     Command::new("svg2gcode")
+        .arg("--feedrate")
+        .arg(gcode_feedrate.to_string())
         .arg("--on")
         .arg("M3 S300")
         .arg("--off")
