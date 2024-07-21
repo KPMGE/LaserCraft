@@ -94,16 +94,22 @@ pub async fn engrave_img(
     publish_next_gcode_chunk(&mut reader, mqtt_helper.clone())?;
 
     let handle = actix_web::rt::spawn(async move {
-        let _ = mqtt_helper
-            .subscribe(&mqtt_gcode_next_chunk_topic, |msg| {
+        tokio::task::spawn_blocking(move || {
+            let result = mqtt_helper.subscribe(&mqtt_gcode_next_chunk_topic, |msg| {
                 if msg == mqtt_gcode_next_chunk_message {
                     if let Err(e) = publish_next_gcode_chunk(&mut reader, mqtt_helper.clone()) {
-                        log::error!("error while publish_next_gcode_chunk: {e:?}");
+                        log::error!("Error while publishing next gcode chunk: {e:?}");
                     }
                 }
-            })
-            .await
-            .map_err(|e| log::error!("error while getting mqtt message: {e:?}"));
+            });
+
+            if let Err(e) = result {
+                log::error!("Error while getting mqtt message: {e:?}");
+            }
+        })
+        .await
+        .map_err(|e| log::error!("Blocking operation failed: {e:?}"))
+        .unwrap();
     });
 
     log::debug!("Saving mqtt_send_chunk_handle");

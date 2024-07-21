@@ -68,7 +68,7 @@ impl MqttHelper {
         Ok(())
     }
 
-    pub async fn subscribe<F>(&self, topic: &str, mut on_message: F) -> HelperResult<()>
+    pub fn subscribe<F>(&self, topic: &str, mut on_message: F) -> HelperResult<()>
     where
         F: FnMut(&str),
     {
