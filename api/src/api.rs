@@ -102,6 +102,7 @@ pub async fn engrave_img(
                     }
                 }
             })
+            .await
             .map_err(|e| log::error!("error while getting mqtt message: {e:?}"));
     });
 
