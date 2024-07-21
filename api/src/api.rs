@@ -71,6 +71,8 @@ pub async fn engrave_img(
     gcode_file.read_to_string(&mut file_contents).unwrap();
     let simplified_gcode = simplify_gcode(&file_contents).unwrap();
 
+    println!("simplified_gcode: \n {}", simplified_gcode);
+
     let cursor = Cursor::new(simplified_gcode);
     let mut reader = BufReader::new(cursor);
 
@@ -140,7 +142,6 @@ pub async fn process_image(
 
     Ok(HttpResponse::Ok().finish())
 }
-
 fn convert_img_to_svg(input_path: &str, output_path: &str) -> anyhow::Result<()> {
     vtracer::convert_image_to_svg(
         Path::new(input_path),
@@ -151,14 +152,16 @@ fn convert_img_to_svg(input_path: &str, output_path: &str) -> anyhow::Result<()>
 }
 
 fn convert_img_to_gcode(gcode_path: &str, svg_path: &str) -> anyhow::Result<()> {
-    let gcode_feedrate = env::var("GCODE_FEEDRATE")
+    let gcode_write_feedrate = env::var("GCODE_WRITE_FEEDRATE")
         .map_err(|e| anyhow!("Could not load environment variable: {e:?}"))?
         .parse::<i32>()
-        .map_err(|e| anyhow!("Could not parse GCODE_FEEDRATE to i32: {e:?}"))?;
+        .map_err(|e| anyhow!("Could not parse GCODE_WRITE_FEEDRATE to i32: {e:?}"))?;
 
     Command::new("svg2gcode")
         .arg("--feedrate")
-        .arg(gcode_feedrate.to_string())
+        .arg(gcode_write_feedrate.to_string())
+        .arg("--dimensions")
+        .arg("52mm,52mm")
         .arg("--on")
         .arg("M3 S300")
         .arg("--off")
@@ -252,8 +255,15 @@ fn publish_next_gcode_chunk(
 }
 
 fn simplify_gcode(buffer: &str) -> anyhow::Result<String, anyhow::Error> {
-    let g0_re = Regex::new(r"G0").unwrap();
-    let gcode_no_g0 = g0_re.replace_all(buffer, "G1");
+    let gcode_position_feedrate = env::var("GCODE_POSITION_FEEDRATE")
+        .map_err(|e| anyhow!("Could not load environment variable: {e:?}"))?
+        .parse::<i32>()
+        .map_err(|e| anyhow!("Could not parse GCODE_POSITION_FEEDRATE to i32: {e:?}"))?;
+
+    let g0_re = Regex::new(r"G0 (?P<rest_of_line>.*)").unwrap();
+    let replace_g0_str = format!("G1 ${{rest_of_line}} F{gcode_position_feedrate}");
+    println!("REPLACE G0 STR: {}", replace_g0_str);
+    let gcode_no_g0 = g0_re.replace_all(buffer, replace_g0_str);
 
     let number_format_re = Regex::new(r"(?P<formated_number>\d+\.\d\d)\d+").unwrap();
     let gcode_formated = number_format_re.replace_all(&gcode_no_g0, "${formated_number}");
