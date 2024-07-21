@@ -1,4 +1,3 @@
-use image::imageops::FilterType;
 use regex::Regex;
 use std::env;
 use std::fs::File;
@@ -12,15 +11,18 @@ use actix_multipart::Field;
 use actix_multipart::Multipart;
 use actix_web::get;
 use actix_web::http::StatusCode;
+use actix_web::rt::task::JoinHandle;
 use actix_web::web;
 use actix_web::ResponseError;
 use actix_web::{post, HttpResponse, Responder};
 use anyhow::anyhow;
 use futures::StreamExt;
 use futures::TryStreamExt;
+use lazy_static::lazy_static;
 use mqtt_helper::MqttHelper;
 use std::io::Write;
 use std::process::Command;
+use std::sync::Mutex;
 
 const PNG_IMG_PATH: &str = "./image.png";
 const SVG_IMG_PATH: &str = "./image.svg";
@@ -30,6 +32,10 @@ const GCODE_PATH: &str = "./image.gcode";
 
 #[derive(Debug)]
 struct ApiError(anyhow::Error);
+
+lazy_static! {
+    static ref mqtt_send_chunk_handle: Mutex<Option<JoinHandle<()>>> = Mutex::new(None);
+}
 
 impl std::fmt::Display for ApiError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -59,6 +65,16 @@ async fn healthcheck() -> impl Responder {
 pub async fn engrave_img(
     mqtt_helper: web::Data<Arc<MqttHelper>>,
 ) -> Result<HttpResponse, ApiError> {
+    log::debug!("Checking for mqtt send gcode chunk background task");
+    if let Some(handle) = mqtt_send_chunk_handle
+        .lock()
+        .map_err(|e| anyhow!("Error while locking mutex: {e:?}"))?
+        .take()
+    {
+        log::debug!("Closing mqtt send gcode chunk background task");
+        handle.abort();
+    }
+
     let mqtt_gcode_next_chunk_topic = env::var("MQTT_GCODE_NEXT_CHUNK_TOPIC")
         .map_err(|e| anyhow!("Could not load environment variable: {e:?}"))?;
 
@@ -77,7 +93,7 @@ pub async fn engrave_img(
 
     publish_next_gcode_chunk(&mut reader, mqtt_helper.clone())?;
 
-    actix_web::rt::spawn(async move {
+    let handle = actix_web::rt::spawn(async move {
         let _ = mqtt_helper
             .subscribe(&mqtt_gcode_next_chunk_topic, |msg| {
                 if msg == mqtt_gcode_next_chunk_message {
@@ -88,6 +104,11 @@ pub async fn engrave_img(
             })
             .map_err(|e| log::error!("error while getting mqtt message: {e:?}"));
     });
+
+    log::debug!("Saving mqtt_send_chunk_handle");
+    *mqtt_send_chunk_handle
+        .lock()
+        .map_err(|e| anyhow!("Error while locking mutex: {e:?}"))? = Some(handle);
 
     Ok(HttpResponse::Ok().finish())
 }
