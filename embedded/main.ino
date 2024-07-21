@@ -28,9 +28,17 @@ static const char *root_ca PROGMEM = R"EOF(
 -----END CERTIFICATE-----
 )EOF";
 
+enum State {
+  IDLE,
+  WAITING_GCODE,
+  PRINTING,
+  DONE
+};
+
 // Global variables
 String gcode;
-int startPos = 0;
+int start_pos = 0;
+State state = IDLE;
 
 // Objects
 WiFiClientSecure espClient;
@@ -59,13 +67,29 @@ void setup() {
 
 // LOOP=====================================
 void loop() {
-  if(Serial1.available() > 0){
-    String gcode_result = Serial1.readStringUntil('\n');
-    Serial.print("GCODE RESULT: ");
-    Serial.println(gcode_result);
-    if (gcode_result.indexOf("ok") != -1) {
-      send_gcode();
-    }
+  switch (state) {
+    case IDLE: 
+      Serial.println("Idle...");
+    break;
+
+    case WAITING_GCODE: 
+      Serial.println("Waiting GCODE to print...");
+    break;
+
+    case DONE: 
+      Serial.println("Printing done!");
+    break;
+
+    case PRINTING: 
+      if(Serial1.available() > 0){
+        String gcode_result = Serial1.readStringUntil('\n');
+        Serial.print("GCODE RESULT: ");
+        Serial.println(gcode_result);
+        if (gcode_result.indexOf("ok") != -1) {
+          send_gcode();
+        }
+      }
+    break;
   }
 
   black_button.loop(); // MUST call the loop() function first
@@ -141,18 +165,22 @@ void mqtt_callback(char* topic, byte* payload, unsigned int length) {
   Serial.print("Message received [");
   Serial.print(topic);
   Serial.println("]: ");
+
   for (int i = 0; i < length; i++) {
     Serial.print((char)payload[i]);
   }
   Serial.println();
+
   char char_array[length+1];
   memcpy(char_array, payload, length);
   char_array[length+1] = 0x0;
   gcode = char_array;
+
   Serial.println("GCODE: ");
   Serial.println(gcode);
-  send_gcode();
-  startPos = 0;
+
+  start_pos = 0;
+  state = PRINTING;
 }
 
 //===========================
@@ -170,14 +198,19 @@ void list_available_ssids() {
 
 //=================
 void send_gcode() {
-  Serial.println("SEND GCODE");
-  int endPos = gcode.indexOf('\n', startPos);
-  if (endPos == -1) {return;}
-  String line = gcode.substring(startPos, endPos);
-  Serial.println("Sending line: ");
+  int end_pos = gcode.indexOf('\n', start_pos);
+  if (end_pos == -1) {
+    get_next_gcode_chunk();
+    state = WAITING_GCODE;
+    return;
+  }
+
+  String line = gcode.substring(start_pos, end_pos);
+  Serial.println("Sending GCODE line: ");
   Serial.println(line);
   Serial1.println(line);
-  startPos = endPos + 1;
+
+  start_pos = end_pos + 1;
 }
 
 //===========================
