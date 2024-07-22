@@ -81,6 +81,8 @@ void loop() {
     break;
 
     case PRINTING: 
+      Serial.println("Printing...");
+
       if(Serial1.available() > 0){
         String gcode_result = Serial1.readStringUntil('\n');
         Serial.print("GCODE RESULT: ");
@@ -89,6 +91,10 @@ void loop() {
           send_gcode();
         }
       }
+    break;
+
+    default:
+      Serial.println("Invalid state!!");
     break;
   }
 
@@ -170,6 +176,11 @@ void mqtt_callback(char* topic, byte* payload, unsigned int length) {
     Serial.print((char)payload[i]);
   }
   Serial.println();
+
+  if (length == 0) {
+    state = DONE;
+    return;
+  }
 
   char char_array[length+1];
   memcpy(char_array, payload, length);
