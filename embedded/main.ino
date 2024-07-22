@@ -1,15 +1,22 @@
 #include <WiFi.h>
 #include <WiFiClientSecure.h>
 #include <PubSubClient.h>
+#include <SoftwareSerial.h>
 #include <ezButton.h>
+#include <Adafruit_SSD1306.h>
+#include <Adafruit_GFX.h>
+#include <Wire.h>
 
 #define DEBOUNCE_TIME 50 // the debounce time in millisecond, increase this time if it still chatters
 
 #define RX 16
 #define TX 17
 
-#define BLACK_BUTTON 2
+#define BLACK_BUTTON 18
 #define GREEN_BUTTON 15
+
+#define SCREEN_WIDTH 128
+#define SCREEN_HEIGHT 64
 
 // WiFi credentials
 const char* ssid = "";
@@ -45,6 +52,7 @@ WiFiClientSecure espClient;
 PubSubClient client(espClient);
 ezButton black_button(BLACK_BUTTON); // create ezButton object that attach to pin GPIO21
 ezButton green_button(GREEN_BUTTON); // create ezButton object that attach to pin GPIO21
+Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
 
 // Functions
 void setup_wifi();
@@ -53,14 +61,20 @@ void list_available_ssids();
 void reconnect();
 void mqtt_callback(char* topic, byte* payload, unsigned int length);
 void get_next_gcode_chunk();
+void setup_display();
+void display_print(String head, String msg);
 
 // SETUP====================================
 void setup() {
   Serial.begin(115200);
   Serial1.begin(115200, SERIAL_8N1, RX, TX);
   delay(300);
-  black_button.setDebounceTime(DEBOUNCE_TIME); // set debounce time to 50 milliseconds
-  green_button.setDebounceTime(DEBOUNCE_TIME); // set debounce time to 50 milliseconds
+
+  setup_display();
+  display_print("Loading...", "");
+
+  black_button.setDebounceTime(DEBOUNCE_TIME);
+  green_button.setDebounceTime(DEBOUNCE_TIME);
   setup_wifi();
   setup_mqtt_client();
 }
@@ -69,20 +83,25 @@ void setup() {
 void loop() {
   switch (state) {
     case IDLE: 
-      Serial.println("Idle...");
+      //Serial.println("Idle...");
+      display_print("LaserCraft", "Waiting something to print...");
     break;
 
     case WAITING_GCODE: 
-      Serial.println("Waiting GCODE to print...");
+      //Serial.println("Waiting GCODE to print...");
+      display_print("Waiting g-code", "..."); 
+
     break;
 
     case DONE: 
-      Serial.println("Printing done!");
+      //Serial.println("Printing done!");
+      display_print("Printing done!", "");
+      delay(1000);
+      state = IDLE;
     break;
 
     case PRINTING: 
-      Serial.println("Printing...");
-
+      //Serial.println("Printing...");
       if(Serial1.available() > 0){
         String gcode_result = Serial1.readStringUntil('\n');
         Serial.print("GCODE RESULT: ");
@@ -103,12 +122,18 @@ void loop() {
 
   if (black_button.isPressed()) {
     Serial.println("The black_button is pressed");
+    display.setCursor(0, 20);
+    display.println("Meu Deus do ceu");
+    display.display(); 
   }
   if (black_button.isReleased()) {
     Serial.println("The black_button is released");
   }
   if (green_button.isPressed()) {
     Serial.println("The green_button is pressed");
+    display.setCursor(0, 20);
+    display.println("Tem turma do pedal!");
+    display.display();
   }
   if (green_button.isReleased()) {
     Serial.println("The green_button is released");
@@ -127,18 +152,26 @@ void setup_wifi() {
   Serial.println();
   Serial.print("Connecting to ");
   Serial.println(ssid);
+  
+  display_print("Connecting wifi...", ssid);
+  delay(1000);
+  
   WiFi.begin(ssid, password);
   while (WiFi.status() != WL_CONNECTED) {
     delay(500);
     Serial.print(".");
     if (WiFi.status() == WL_CONNECT_FAILED) {
       Serial.println("Connection failed");
+      display_print("Connection failed", "");
     }
   }
   Serial.println();
   Serial.println("WiFi connected");
   Serial.println("IP address: ");
   Serial.println(WiFi.localIP());
+
+  display_print("WiFi connected", WiFi.localIP().toString());
+  delay(1500);
 }
 
 //=========================
@@ -157,10 +190,15 @@ void reconnect() {
       Serial.println("subscribing to topic: ");
       Serial.println(mqtt_topic);
       client.subscribe(mqtt_topic);
+
+      display_print("MQTT Connected", mqtt_topic);
+
     } else {
       Serial.print("failed, rc=");
       Serial.print(client.state());
       Serial.println(" Trying again in 5 seconds");
+
+      display_print("MQTT failure", "rc="+client.state());
       delay(5000);
     }
   }
@@ -184,6 +222,7 @@ void mqtt_callback(char* topic, byte* payload, unsigned int length) {
 
   char char_array[length+1];
   memcpy(char_array, payload, length);
+  char_array[length] = '\n';
   char_array[length+1] = 0x0;
   gcode = char_array;
 
@@ -192,6 +231,7 @@ void mqtt_callback(char* topic, byte* payload, unsigned int length) {
 
   start_pos = 0;
   state = PRINTING;
+  send_gcode();
 }
 
 //===========================
@@ -222,10 +262,32 @@ void send_gcode() {
   Serial1.println(line);
 
   start_pos = end_pos + 1;
+  display_print("Printing...", line);
 }
 
 //===========================
 void get_next_gcode_chunk() {
+  Serial.println("Trying to get next gcode chunk...");
   gcode = "";
   client.publish(mqtt_next_chunk_topic, mqtt_next_chunk_message);
+}
+
+void display_print(String head, String msg){
+  display.clearDisplay();
+  display.setCursor(0, 0);
+  display.println(head);
+  display.setCursor(0, 20);
+  display.println(msg);
+  display.display(); 
+}
+
+void setup_display(){
+  if(!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) {
+    Serial.println(F("SSD1306 allocation failed"));
+    for(;;);
+  }
+  delay(2000);
+  display.clearDisplay();
+  display.setTextSize(1);
+  display.setTextColor(WHITE);
 }
