@@ -187,8 +187,6 @@ fn convert_img_to_gcode(gcode_path: &str, svg_path: &str) -> anyhow::Result<()> 
     Command::new("svg2gcode")
         .arg("--feedrate")
         .arg(gcode_write_feedrate.to_string())
-        .arg("--dimensions")
-        .arg("52mm,52mm")
         .arg("--on")
         .arg("M3 S300")
         .arg("--off")
