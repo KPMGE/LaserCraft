@@ -17,7 +17,7 @@ This document explains how we've projected the laser engraver in both aspects: *
 Before we start diving deeper into how the project works under the hood, let's
 have a look at how the projet works as a whole:
 
-![LaserCraft diagram](./assets/laser-engraver-diagram.png)
+![LaserCraft diagram](./assets/laser-craft-diagram.png)
 
 Here, we can see that the [mobile app](../app/README.md) first sends an image to the [api](../api/README.md), where it
 gets processed and turned into [Gcode](https://en.wikipedia.org/wiki/G-code)
