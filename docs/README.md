@@ -10,7 +10,45 @@ This is a project of a laser engraver CNC machine controlled by a mobile app and
  - An ESP32 subscribed in the topic will receive the Gcode and then send it to the Arduino via Serial UART.
  - The Arduino is hosting the firmware which will control the hardware through Gcode.
 
-This document explains how we've projected the laser engraver in both aspects: **Hardware** and **Software**. Let's start talking about Hardware, which is the base for the project and it makes you understand the software part more easily. 
+This document explains how we've projected the laser engraver in both aspects: **Hardware** and **Software**.
+
+
+## Software
+Before we start diving deeper into how the project works under the hood, let's
+have a look at how the projet works as a whole:
+
+![LaserCraft diagram](./assets/laser-engraver-diagram.png)
+
+Here, we can see that the [mobile app](../app/README.md) first sends an image to the [api](../api/README.md), where it
+gets processed and turned into [Gcode](https://en.wikipedia.org/wiki/G-code)
+that will be used later on to control the laser engraver.
+
+Furthermore, the [api](../api/README.md) publishes a preview of the gcode into a mqtt topic. The [app](../app/README.md)
+then listens on this topic and shows the preview to the user that can then
+either send a new image or engrave the one he got.
+
+When the user asks to engrave the image, the [app](../app/README.md) calls into another route on the
+[api](../api/README.md) that starts to publish the [Gcode](https://en.wikipedia.org/wiki/G-code)
+into another mqtt topic.
+
+In this project, it was necessary to split the
+[Gcode](https://en.wikipedia.org/wiki/G-code) into chunks, since depending on
+the image size, the gcode can get quite big so the ESP32 buffer couldn't handle
+it.
+
+Once the [api](../api/README.md) publishes the first [Gcode](https://en.wikipedia.org/wiki/G-code)
+chunk into the topic, the ESP32 listens on the topic and starts to send it, line
+by line to the Arduino with the GRBL firmware, that controls the engraver,
+setting its position on the x-y axis, turning on and off the laser etc.
+
+The firmware then returns a status code back to the ESP32, letting it know the
+command has been successfully executed. Then the ESP32 sends the
+next line.
+
+When the ESP32's buffer has been fully consumed, it publishes into another mqtt
+topic, asking for the next [Gcode](https://en.wikipedia.org/wiki/G-code) chunk. Then, the [api](../api/README.md) publishes the next chunk and the same idea goes until the whole [Gcode](https://en.wikipedia.org/wiki/G-code)
+is sent.
+
 
 ## Hardware
 The hardware design for this project depends on the CNC controller you will choose. In this way, we have chosen the [GRBL V1.1](https://github.com/gnea/grbl). It's a firmware that translates **Gcode** into signals for stepper motor movements and laser activation. Sure, let's proceed with the list of materials based on that:
@@ -36,15 +74,15 @@ The hardware design for this project depends on the CNC controller you will choo
 
 #
 ### Schematic
-![alt text](./assets/LaserCraftSchematic.png)
+![LaserCraft Schematic](./assets/LaserCraftSchematic.png)
 
 #
 ### Stepper motors
 In our case, we have encountered some old DVD drivers with the stepper motors, but you can use other stepper motors like Nemma-17 for example. The good part of DVD stepper motors is that it comes with structure and rails that will be used in the project. 
-![alt text](./assets/stepperMotors.jpg)
+![Stepper motors](./assets/stepperMotors.jpg)
 
 Below there's the specification of the stepper motor:
-![alt text](./assets/motorSpecs.png)
+![Motor Specs](./assets/motorSpecs.png)
 This image contains some informations that will be used to calibrate the GRBL later. For example: the step angle of the motor is 18º. In this way, for a complete  revolution (360º), you will need 20 steps. The lead pitch is important too. It says about linear distance the carriage travels in one revolution.
 
 #
@@ -56,7 +94,7 @@ Before flashing the GRBL to the Arduino, you must modify some details that will 
 
 #### *Using GRBL*
 After adjusting the details and uploading the GRBL to the Arduino, you can communicate with it by Serial monitor at Arduino IDE. Set the baud rate to 115200 and check the commands in the [documentation](https://github.com/gnea/grbl/wiki/Grbl-v1.1-Commands). Backing to the hardware project, below there's the pinout for Aruino with GRBL.
-![alt text](./assets/arduinoPinout.png)
+![Arduino pinout](./assets/arduinoPinout.png)
 
 For this project we only use the following pins: 0, 1, 2, 3, 5, 6, 8 and 11.
 **The pins 0 and 1 are used for serial communication with ESP32.**
