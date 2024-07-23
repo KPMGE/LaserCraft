@@ -41,7 +41,9 @@ enum State {
   IDLE,
   WAITING_GCODE,
   PRINTING,
-  DONE
+  DONE,
+  PAUSED,
+  FREEZE
 };
 
 // Global variables
@@ -227,6 +229,13 @@ void handle_states() {
       }
     break;
 
+    case PAUSED:
+    break;
+
+    case FREEZE:
+      while(true){}
+    break;
+
     default:
       display_print("ERROR!", "Invalid state!");
     break;
@@ -239,10 +248,14 @@ void handle_buttons() {
   green_button.loop();
 
   if (black_button.isPressed()) {
-    display_print("Button action", "The black button is pressed!")/
+    soft_reset();
   }
   if (green_button.isPressed()) {
-    display_print("Button action", "The green button is pressed");
+    if(state == PAUSED){
+      cycle_resume();
+      return;
+    }
+    feed_hold();
   }
 }
 
@@ -255,24 +268,23 @@ void setup_button() {
 //===============
 void feed_hold() {
   Serial1.println("!");
-  // Update state
-  display_print("System paused", "Click to resume...");
+  state=PAUSED;
+  display_print("System paused", "Press green button to resume!");
 }
 
 //===================
 void cycle_resume() {
-  display_print("Resuming...", "The printing will return in 3 seconds");
-  delay(3000);
-  // Update state
+  display_print("Resuming...", "Here we go again!");
+  delay(1500);
   Serial1.println("~");
+  state=PRINTING;
+  delay(100);
 }
 
 //=================
 void soft_reset() {
-  display_print("Reseting...", "Halting machine and reseting...");
-  delay(2000);
+  display_print("Soft reset...", "Restart and re-home the machine!");
   Serial1.write(0x18);
-  Serial1.print("\n");    // Verification needed
-  // Update state
-  // Call api to reset gcode
+  Serial1.print("\n");
+  state = FREEZE;
 }
