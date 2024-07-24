@@ -50,6 +50,7 @@ enum State {
 String gcode;
 int start_pos = 0;
 State state = IDLE;
+bool is_first_time = true;
 
 // Objects
 WiFiClientSecure espClient;
@@ -85,6 +86,12 @@ void setup() {
   setup_wifi();
   setup_mqtt_client();
   setup_button();
+
+  // DEBUG
+  Serial1.print("\r\n\r\n");
+  delay(2500);
+  Serial1.flush();
+
 }
 
 // LOOP=======================================
@@ -154,7 +161,7 @@ void mqtt_callback(char* topic, byte* payload, unsigned int length) {
 
   start_pos = 0;
   state = PRINTING;
-  send_gcode();
+  //send_gcode();
 }
 
 //=================
@@ -162,16 +169,18 @@ void send_gcode() {
   int end_pos = gcode.indexOf('\n', start_pos);
   
   if (end_pos == -1) {
-    get_next_gcode_chunk();
     state = WAITING_GCODE;
+    get_next_gcode_chunk();
     return;
   }
 
   String line = gcode.substring(start_pos, end_pos);
   Serial1.println(line);
+  Serial.println(line); //DEBUG
 
   start_pos = end_pos + 1;
   display_print("Printing...", line);
+  delay(10);  //DEBUG
 }
 
 //===========================
@@ -222,6 +231,12 @@ void handle_states() {
     case PRINTING: 
       if(Serial1.available() > 0){
         String gcode_result = Serial1.readStringUntil('\n');
+        Serial.println(gcode_result); //DEBUG
+
+        if (is_first_time) {
+         send_gcode();
+         is_first_time = false; 
+        }
 
         if (gcode_result.indexOf("ok") != -1) {
           send_gcode();
