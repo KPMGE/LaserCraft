@@ -133,13 +133,26 @@ pub async fn process_image(
     let content_disposition = field.content_disposition();
     let filename = content_disposition.get_filename().unwrap_or_default();
 
+    let is_svg_file = filename.ends_with(".svg");
+    let is_png_file = filename.ends_with(".png");
+
+    let save_file_path = if is_png_file {
+        PNG_IMG_PATH
+    } else if is_svg_file {
+        SVG_IMG_PATH
+    } else {
+        return Err(ApiError(anyhow!("invalid file extension!")));
+    };
+
     log::info!("Received file: {filename}");
     log::info!("Saving file: {filename} to disk...");
-    save_file_to_disk(PNG_IMG_PATH, &mut field).await?;
+    save_file_to_disk(save_file_path, &mut field).await?;
 
-    log::info!("Converting image to svg...");
-    convert_img_to_svg(PNG_IMG_PATH, SVG_IMG_PATH)?;
-    log::info!("Image converted to svg successfully!");
+    if is_png_file {
+        log::info!("Converting image to svg...");
+        convert_img_to_svg(PNG_IMG_PATH, SVG_IMG_PATH)?;
+        log::info!("Image converted to svg successfully!");
+    }
 
     log::info!("Scaling svg image...");
     scale_image(SVG_IMG_PATH, SCALED_SVG_IMG_PATH)?;
