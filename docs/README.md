@@ -49,6 +49,7 @@ When the ESP32's buffer has been fully consumed, it publishes into another mqtt
 topic, asking for the next [Gcode](https://en.wikipedia.org/wiki/G-code) chunk. Then, the [api](../api/README.md) publishes the next chunk and the same idea goes until the whole [Gcode](https://en.wikipedia.org/wiki/G-code)
 is sent.
 
+Check the ESP32 code and docs [here](https://github.com/vortex2jm/LaserCraft/tree/main/embedded).
 
 ## Hardware
 The hardware design for this project depends on the CNC controller you will choose. In this way, we have chosen the [GRBL V1.1](https://github.com/gnea/grbl). It's a firmware that translates **Gcode** into signals for stepper motor movements and laser activation. Sure, let's proceed with the list of materials based on that:
