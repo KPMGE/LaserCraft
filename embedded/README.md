@@ -23,7 +23,7 @@ be also logged on the display.
 
 ## How it works?
 Basically, there are 4 states this program can be in: `IDLE`, `WAITING_GCODE`,
-`PRINTING` or `DONE`. 
+`PRINTING`, `PAUSED`, `FREEZED` or `DONE`. 
 
 The `IDLE` state is the state where the machine is doing nothing, is just
 hanging around waiting for some data to start printing.
@@ -35,6 +35,15 @@ the mqtt topic.
 Next up, the `WAITING_GCODE` state happens when all the commands from a gcode
 chunk have been consumed, then the esp32 publishes into an mqtt topic, asking
 for the next chunk, then it goes to this waiting state.
+
+The `PAUSED` state is activated and deactivated when you press the green button. 
+In this way, the machine pauses printing with the first press, and when you press
+the button again, the spindle is restored and the machine continues printing.
+
+The `FREEZED` state is activated when you press the black button, which performs 
+a soft reset, or when the printing is complete. This state prevents you from endangering
+the machine. After printing finishes, re-homing is necessary, and you must do it manually.
+Furthermore, if something goes wrong, you can press the black button to halt the machine. 
 
 Finally, the `DONE` state is when the gcode has been fully consumed and the
 image has been engraved!
